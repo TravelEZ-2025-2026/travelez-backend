@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:latest
+    container_name: travelez_db
+    restart: always
+    environment:
+      POSTGRES_USER: travelez
+      POSTGRES_PASSWORD: travelez
+      POSTGRES_DB: travelez
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

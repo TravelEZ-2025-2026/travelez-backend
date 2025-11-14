@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: travelez_system
+  #Connect db
+  datasource:
+    url: jdbc:postgresql://localhost:5435/travelez
+    username: travelez
+    password: travelez
+  #JPA config
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+#JWT config
+jwt:
+  tokenHeader: Authorization
+  secret: bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb25UaGF0SXNBdExlYXN0MjU2Qml0c0xvbmcxMjM0NTY3OA==
+  expiration: 604800 #(60*60*24*7)
+  tokenHead: 'Bearer '
+
+server:
+  port: 8080
+
