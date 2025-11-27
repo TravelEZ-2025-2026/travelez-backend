@@ -19,26 +19,27 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(value = RuntimeException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException e) {
+        return ApiResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
     @ExceptionHandler(value = ApiException.class)
-    public ResponseEntity<ApiResponse> handleApiException(ApiException e) {
+    public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException e) {
         if (e.getErrorCode() != null) {
-            return ResponseEntity.status(e.getErrorCode().getCode())
-                    .body(ApiResponse.failed(e.getErrorCode(), e.getMessage(), null));
+            return ApiResponse.failed(null, e.getErrorCode(), e.getMessage());
         }
-        return ResponseEntity.status(ResultCode.INTERNAL_SERVER_ERROR.getCode())
-                .body(ApiResponse.failed(ResultCode.INTERNAL_SERVER_ERROR, e.getMessage(), null));
+        return ApiResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<Object>> handleBadCredentialsException(BadCredentialsException e) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.failed(ResultCode.UNAUTHORIZED, e.getMessage(), null));
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(BadCredentialsException e) {
+        return ApiResponse.failed(null, ResultCode.UNAUTHORIZED, e.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Object>> handleAccessDeniedException(AccessDeniedException e) {
-        return ResponseEntity.status(ResultCode.FORBIDDEN.getCode())
-                .body(ApiResponse.failed(ResultCode.FORBIDDEN, e.getMessage(), null));
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException e) {
+        return ApiResponse.failed(null, ResultCode.FORBIDDEN, e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -51,8 +52,7 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        return ResponseEntity.status(ResultCode.VALIDATION_FAILED.getCode())
-                .body(ApiResponse.<Map<String, String>>failed(ResultCode.VALIDATION_FAILED, ex.getMessage(), errors));
+        return ApiResponse.failed(errors, ResultCode.VALIDATION_FAILED, ex.getMessage());
     }
 
     @ExceptionHandler(BindException.class)
@@ -66,8 +66,12 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        return ResponseEntity.status(ResultCode.VALIDATION_FAILED.getCode())
-                .body(ApiResponse.<Map<String, String>>failed(ResultCode.VALIDATION_FAILED, ex.getMessage(), errors));
+        return ApiResponse.failed(errors, ResultCode.VALIDATION_FAILED, ex.getMessage());
+    }
+
+    @ExceptionHandler(value = Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+        return ApiResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
 }

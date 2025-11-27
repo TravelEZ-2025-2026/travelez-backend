@@ -31,14 +31,14 @@ public class User extends AuditableEntity {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "gender", length = 20)
+    @Column(name = "gender")
     @Enumerated(EnumType.STRING)
     private GenderType gender;
 
     @Column(name = "dob")
     private LocalDateTime dob;
 
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false)
     @Builder.Default
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.ACTIVE;
@@ -46,7 +46,7 @@ public class User extends AuditableEntity {
     @Column(name = "avatar")
     private String avatar;
 
-    @Column(name = "role", nullable = false, length = 20)
+    @Column(name = "role", nullable = false)
     @Enumerated(EnumType.STRING)
     private RoleType role;
 

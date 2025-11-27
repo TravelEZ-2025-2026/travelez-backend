@@ -37,31 +37,36 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
         // get token from header 'Bearer <token>'
         String authHeader = request.getHeader(this.tokenHeader);
 
-        if (authHeader != null && authHeader.startsWith(this.tokenHead)) {
-            // get token from header '<token>'
-            String authToken = authHeader.substring(this.tokenHead.length());
-            // extract username from token
-            String username = jwtUtil.extractUsername(authToken);
-            // if username is not null and authentication is null, load user details
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // load user details by username
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                // if token is valid, set authentication
-                if (jwtUtil.validateToken(authToken, userDetails)) {
-                    Long userId = jwtUtil.extractUserId(authToken);
-                    String role = jwtUtil.extractRole(authToken);
-                    // create user principle
-                    UserPrinciple userPrinciple = new UserPrinciple(userId, username, role);
-                    // create authentication token
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userPrinciple, null, userDetails.getAuthorities());
-                    // set details
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    // set authentication
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            if (authHeader != null && authHeader.startsWith(this.tokenHead)) {
+                // get token from header '<token>'
+                String authToken = authHeader.substring(this.tokenHead.length());
+                // extract username from token
+                String username = jwtUtil.extractUsername(authToken);
+                // if username is not null and authentication is null, load user details
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    // load user details by username
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    // if token is valid, set authentication
+                    if (jwtUtil.validateToken(authToken, userDetails)) {
+                        Long userId = jwtUtil.extractUserId(authToken);
+                        String role = jwtUtil.extractRole(authToken);
+                        // create user principle
+                        UserPrinciple userPrinciple = new UserPrinciple(userId, username, role);
+                        // create authentication token
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userPrinciple, null, userDetails.getAuthorities());
+                        // set details
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        // set authentication
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
                 }
             }
+        } catch (Exception e) {
+            logger.error("Cannot set user authentication: {}");
         }
+
         // continue filter chain
         chain.doFilter(request, response);
     }
