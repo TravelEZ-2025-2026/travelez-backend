@@ -1,6 +1,7 @@
 package com.example.travelez.backend.users.service.impl;
 
 import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.security.util.JwtUtil;
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
@@ -57,9 +58,6 @@ public class UserServiceImpl implements UserService {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             User user = loadUserByUsername(username);
 
-            if (!passwordEncoder.matches(password, user.getPassword())) {
-                throw new BadCredentialsException("Invalid password");
-            }
             if (!isUserValid(user)) {
                 Asserts.fail(ResultCode.FORBIDDEN, "User is not active");
             }

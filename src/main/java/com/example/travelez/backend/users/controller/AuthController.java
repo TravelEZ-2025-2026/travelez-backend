@@ -25,18 +25,16 @@ public class AuthController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse> register(@RequestBody UserRegisterRequest request) {
+    public ResponseEntity<ApiResponse<Void>> register(@RequestBody UserRegisterRequest request) {
         userService.register(request);
 
-        return ResponseEntity.status(ResultCode.SUCCESS.getCode())
-                .body(ApiResponse.success(null, "User registered successfully"));
+        return ApiResponse.success(null, ResultCode.SUCCESS, "User registered successfully");
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<UserLoginResponse>> login(@RequestBody UserLoginRequest request) {
         UserLoginResponse response = userService.login(request.getUsername(), request.getPassword());
-        return ResponseEntity.status(ResultCode.SUCCESS.getCode())
-                .body(ApiResponse.success(response, "Login successful"));
+        return ApiResponse.success(response, ResultCode.SUCCESS, "Login successful");
     }
 
 }

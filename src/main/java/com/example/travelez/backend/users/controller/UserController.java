@@ -35,8 +35,7 @@ public class UserController {
 
         UserDetailResponse response = userMapper
                 .toUserDetailResponse(userService.getUserById(userPrinciple.getUserId()));
-        return ResponseEntity.status(ResultCode.SUCCESS.getCode())
-                .body(ApiResponse.success(response, "User fetched successfully"));
+        return ApiResponse.success(response, ResultCode.SUCCESS, "User fetched successfully");
     }
 
 }

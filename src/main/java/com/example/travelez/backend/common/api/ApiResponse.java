@@ -1,5 +1,7 @@
 package com.example.travelez.backend.common.api;
 
+import org.springframework.http.ResponseEntity;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,19 +17,25 @@ public class ApiResponse<T> {
     private T data;
     private boolean success;
 
-    public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<T>(ResultCode.SUCCESS.getCode(), ResultCode.SUCCESS.getMessage(), data, true);
+    public static <T> ResponseEntity<ApiResponse<T>> success(T data, ResultCode resultCode) {
+        return ResponseEntity.status(resultCode.getCode())
+                .body(new ApiResponse<T>(resultCode.getCode(), resultCode.getMessage(), data, true));
     }
 
-    public static <T> ApiResponse<T> success(T data, String message) {
-        return new ApiResponse<T>(ResultCode.SUCCESS.getCode(), message, data, true);
+    public static <T> ResponseEntity<ApiResponse<T>> success(T data, ResultCode resultCode, String message) {
+        return ResponseEntity.status(resultCode.getCode())
+                .body(new ApiResponse<T>(resultCode.getCode(), message == "" ? resultCode.getMessage() : message, data,
+                        true));
     }
 
-    public static <T> ApiResponse<T> failed(IErrorCode errorCode) {
-        return new ApiResponse<T>(errorCode.getCode(), errorCode.getMessage(), null, false);
+    public static <T> ResponseEntity<ApiResponse<T>> failed(T data, IErrorCode errorCode) {
+        return ResponseEntity.status(errorCode.getCode())
+                .body(new ApiResponse<T>(errorCode.getCode(), errorCode.getMessage(), data, false));
     }
 
-    public static <T> ApiResponse<T> failed(IErrorCode errorCode, String message, T data) {
-        return new ApiResponse<T>(errorCode.getCode(), message == "" ? errorCode.getMessage() : message, data, false);
+    public static <T> ResponseEntity<ApiResponse<T>> failed(T data, IErrorCode errorCode, String message) {
+        return ResponseEntity.status(errorCode.getCode())
+                .body(new ApiResponse<T>(errorCode.getCode(), message == "" ? errorCode.getMessage() : message, data,
+                        false));
     }
 }
