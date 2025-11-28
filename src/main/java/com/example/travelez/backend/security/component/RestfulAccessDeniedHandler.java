@@ -1,6 +1,6 @@
 package com.example.travelez.backend.security.component;
 
-import com.example.travelez.backend.common.api.ApiResponse;
+import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
@@ -20,7 +20,7 @@ public class RestfulAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        ApiResponse<Object> apiResponse = ApiResponse.builder()
+        BaseResponse<Object> baseResponse = BaseResponse.builder()
                 .success(false)
                 .code(ResultCode.FORBIDDEN.getCode())
                 .message(ResultCode.FORBIDDEN.getMessage())
@@ -28,7 +28,7 @@ public class RestfulAccessDeniedHandler implements AccessDeniedHandler {
                 .build();
 
         ObjectMapper mapper = new ObjectMapper();
-        response.getWriter().write(mapper.writeValueAsString(apiResponse));
+        response.getWriter().write(mapper.writeValueAsString(baseResponse));
     }
 
 }

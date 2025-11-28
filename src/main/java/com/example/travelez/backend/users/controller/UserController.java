@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.travelez.backend.common.api.ApiResponse;
+import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.security.component.UserPrinciple;
 import com.example.travelez.backend.users.service.UserService;
@@ -29,13 +29,13 @@ public class UserController {
     private final UserMapper userMapper;
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserDetailResponse>> getUserById() {
+    public ResponseEntity<BaseResponse<UserDetailResponse>> getUserById() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
 
         UserDetailResponse response = userMapper
                 .toUserDetailResponse(userService.getUserById(userPrinciple.getUserId()));
-        return ApiResponse.success(response, ResultCode.SUCCESS, "User fetched successfully");
+        return BaseResponse.success(response, ResultCode.SUCCESS, "User fetched successfully");
     }
 
 }

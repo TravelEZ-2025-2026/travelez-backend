@@ -12,17 +12,19 @@ import java.util.List;
 @Builder
 public class CommonPage<T> {
 
-    private List<T> list;
+    private List<T> content;
     private Integer totalPages;
     private Long totalElements;
     private Integer size;
     private Integer page;
+    private boolean empty;
 
-    public CommonPage(List<T> list, Integer totalPages, Long totalElements, Integer size, Integer page) {
-        this.list = list;
+    public CommonPage(List<T> content, Integer totalPages, Long totalElements, Integer size, Integer page, boolean empty) {
+        this.content = content;
         this.totalPages = totalPages;
         this.totalElements = totalElements;
         this.size = size;
         this.page = page;
+        this.empty = empty;
     }
 }
