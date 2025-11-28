@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -55,5 +56,9 @@ public class PoiServiceImpl implements PoiService {
         Poi poi = poiRepository.findByIdAndSystemStatus(poiId, PoiStatus.ACTIVE)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Poi not found"));
         return poiMapper.toPoiDetailResponse(poi);
+    }
+
+    public Optional<Poi> findByIdAndSystemStatus(long poiId, PoiStatus systemStatus) {
+        return poiRepository.findByIdAndSystemStatus(poiId, systemStatus);
     }
 }
