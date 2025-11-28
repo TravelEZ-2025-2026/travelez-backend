@@ -1,6 +1,6 @@
 package com.example.travelez.backend.security.component;
 
-import com.example.travelez.backend.common.api.ApiResponse;
+import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
@@ -22,7 +22,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-        ResponseEntity<ApiResponse<Void>> apiResponse = ApiResponse.failed(null, ResultCode.UNAUTHORIZED);
+        ResponseEntity<BaseResponse<Void>> apiResponse = BaseResponse.failed(null, ResultCode.UNAUTHORIZED);
         response.getWriter().write(new ObjectMapper().writeValueAsString(apiResponse.getBody()));
     }
 }

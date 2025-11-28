@@ -1,8 +1,7 @@
 package com.example.travelez.backend.common.exception;
 
-import com.example.travelez.backend.common.api.ApiResponse;
+import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -20,30 +19,30 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = RuntimeException.class)
-    public ResponseEntity<ApiResponse<Void>> handleRuntimeException(RuntimeException e) {
-        return ApiResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    public ResponseEntity<BaseResponse<Void>> handleRuntimeException(RuntimeException e) {
+        return BaseResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
     @ExceptionHandler(value = ApiException.class)
-    public ResponseEntity<ApiResponse<Void>> handleApiException(ApiException e) {
+    public ResponseEntity<BaseResponse<Void>> handleApiException(ApiException e) {
         if (e.getErrorCode() != null) {
-            return ApiResponse.failed(null, e.getErrorCode(), e.getMessage());
+            return BaseResponse.failed(null, e.getErrorCode(), e.getMessage());
         }
-        return ApiResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        return BaseResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(BadCredentialsException e) {
-        return ApiResponse.failed(null, ResultCode.UNAUTHORIZED, e.getMessage());
+    public ResponseEntity<BaseResponse<Void>> handleBadCredentialsException(BadCredentialsException e) {
+        return BaseResponse.failed(null, ResultCode.UNAUTHORIZED, e.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException e) {
-        return ApiResponse.failed(null, ResultCode.FORBIDDEN, e.getMessage());
+    public ResponseEntity<BaseResponse<Void>> handleAccessDeniedException(AccessDeniedException e) {
+        return BaseResponse.failed(null, ResultCode.FORBIDDEN, e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
+    public ResponseEntity<BaseResponse<Map<String, String>>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -52,11 +51,11 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        return ApiResponse.failed(errors, ResultCode.VALIDATION_FAILED, ex.getMessage());
+        return BaseResponse.failed(errors, ResultCode.VALIDATION_FAILED, ex.getMessage());
     }
 
     @ExceptionHandler(BindException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(BindException ex) {
+    public ResponseEntity<BaseResponse<Map<String, String>>> handleValidationExceptions(BindException ex) {
 
         BindingResult bindingResult = ex.getBindingResult();
         Map<String, String> errors = new HashMap<>();
@@ -66,12 +65,12 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
-        return ApiResponse.failed(errors, ResultCode.VALIDATION_FAILED, ex.getMessage());
+        return BaseResponse.failed(errors, ResultCode.VALIDATION_FAILED, ex.getMessage());
     }
 
     @ExceptionHandler(value = Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        return ApiResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    public ResponseEntity<BaseResponse<Void>> handleException(Exception e) {
+        return BaseResponse.failed(null, ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
 }

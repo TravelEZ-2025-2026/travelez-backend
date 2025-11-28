@@ -1,6 +1,6 @@
 package com.example.travelez.backend.users.controller;
 
-import com.example.travelez.backend.common.api.ApiResponse;
+import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.users.dto.request.UserLoginRequest;
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
@@ -25,16 +25,16 @@ public class AuthController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> register(@RequestBody UserRegisterRequest request) {
+    public ResponseEntity<BaseResponse<Void>> register(@RequestBody UserRegisterRequest request) {
         userService.register(request);
 
-        return ApiResponse.success(null, ResultCode.SUCCESS, "User registered successfully");
+        return BaseResponse.success(null, ResultCode.SUCCESS, "User registered successfully");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<UserLoginResponse>> login(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<BaseResponse<UserLoginResponse>> login(@RequestBody UserLoginRequest request) {
         UserLoginResponse response = userService.login(request.getUsername(), request.getPassword());
-        return ApiResponse.success(response, ResultCode.SUCCESS, "Login successful");
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Login successful");
     }
 
 }
