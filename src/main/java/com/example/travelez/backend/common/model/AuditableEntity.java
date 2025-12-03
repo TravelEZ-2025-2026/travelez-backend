@@ -25,6 +25,6 @@ public abstract class AuditableEntity {
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = true)
     private LocalDateTime updatedAt;
 }
