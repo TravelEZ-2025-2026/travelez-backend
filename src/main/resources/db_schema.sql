@@ -56,7 +56,7 @@ CREATE TABLE place_of_interest (
     name VARCHAR(255) NOT NULL, --
     poi_type poi_type_enum, --
     poi_type_detail TEXT, --
-    system_status    DEFAULT 'ACTIVE' NOT NULL, -- 'active' or 'banned'
+    system_status poi_status_enum   DEFAULT 'ACTIVE' NOT NULL, -- 'active' or 'banned'
     address TEXT, --
     website TEXT, --
     phone_number VARCHAR(20), --
