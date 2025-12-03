@@ -138,17 +138,19 @@ public class ItineraryService {
      * (Remove ```json ... ``` blocks if present)
      */
     private String cleanJson(String text) {
-        if (text == null) return "{}";
-        text = text.trim();
-        if (text.startsWith("```json")) {
-            text = text.substring(7);
+        if (text == null || text.isEmpty()) return "{}";
+
+        // 1. Xóa Markdown block code ```json ... ```
+        text = text.replaceAll("```json", "").replaceAll("```", "").trim();
+
+        // 2. Cắt lấy đúng phần JSON object (từ '{' đến '}')
+        int firstBrace = text.indexOf("{");
+        int lastBrace = text.lastIndexOf("}");
+
+        if (firstBrace != -1 && lastBrace != -1 && firstBrace < lastBrace) {
+            return text.substring(firstBrace, lastBrace + 1);
         }
-        if (text.startsWith("```")) {
-            text = text.substring(3);
-        }
-        if (text.endsWith("```")) {
-            text = text.substring(0, text.length() - 3);
-        }
-        return text.trim();
+
+        return text; // Trả về nguyên gốc nếu không tìm thấy cấu trúc JSON
     }
 }

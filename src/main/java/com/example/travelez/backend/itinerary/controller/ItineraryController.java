@@ -1,6 +1,6 @@
 package com.example.travelez.backend.itinerary.controller;
 
-import com.example.travelez.backend.common.api.ApiResponse;
+import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.itinerary.dto.ItineraryRequest;
 import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.fasterxml.jackson.databind.ObjectMapper; // Import thêm cái này
@@ -19,7 +19,7 @@ public class ItineraryController {
     private final ObjectMapper objectMapper; // Inject ObjectMapper có sẵn của Spring
 
     @PostMapping("/plan")
-    public ResponseEntity<ApiResponse<Object>> planTrip(@RequestBody ItineraryRequest request) {
+    public ResponseEntity<BaseResponse<Object>> planTrip(@RequestBody ItineraryRequest request) {
 
         // 1. Lấy chuỗi JSON từ Service (vẫn là String)
         String resultJsonString = itineraryService.planTrip(request.getPrompt());
@@ -30,11 +30,11 @@ public class ItineraryController {
             Object jsonObject = objectMapper.readValue(resultJsonString, Object.class);
 
             // 3. Trả về Object đó. Spring sẽ serialize nó thành JSON chuẩn (không bị escape)
-            return ResponseEntity.ok(ApiResponse.success(jsonObject));
+            return BaseResponse.success(jsonObject);
 
         } catch (Exception e) {
             // Trường hợp AI trả về bậy bạ không parse được, trả về dạng String để debug
-            return ResponseEntity.ok(ApiResponse.success(resultJsonString));
+            return BaseResponse.success(resultJsonString);
         }
     }
 }

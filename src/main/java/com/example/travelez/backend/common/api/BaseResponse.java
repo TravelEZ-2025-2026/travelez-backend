@@ -17,6 +17,10 @@ public class BaseResponse<T> {
     private T data;
     private boolean success;
 
+    public static <T> ResponseEntity<BaseResponse<T>> success(T data) {
+        return ResponseEntity.ok(new BaseResponse<>(200, "Success", data, true));
+    }
+
     public static <T> ResponseEntity<BaseResponse<T>> success(T data, ResultCode resultCode) {
         return ResponseEntity.status(resultCode.getCode())
                 .body(new BaseResponse<T>(resultCode.getCode(), resultCode.getMessage(), data, true));
