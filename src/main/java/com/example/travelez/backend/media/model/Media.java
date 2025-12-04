@@ -27,7 +27,7 @@ public class Media {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(name = "url", nullable = false)
+    @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
 
     @Column(name = "type", nullable = false)
