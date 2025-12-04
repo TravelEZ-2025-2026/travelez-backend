@@ -34,7 +34,7 @@ public class Review extends AuditableEntity {
     @JdbcType(PostgreSQLEnumJdbcType.class)
     private ReviewStatus status;
 
-    @Column(name = "content")
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "rating")
@@ -43,7 +43,7 @@ public class Review extends AuditableEntity {
     @Column(name = "external_name")
     private String externalName;
 
-    @Column(name = "external_avt")
+    @Column(name = "external_avt", columnDefinition = "TEXT")
     private String externalAvt;
 
     @Column(name = "is_crawled", nullable = false)
