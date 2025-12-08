@@ -1,8 +1,11 @@
 package com.example.travelez.backend.itinerary.controller;
 
 import com.example.travelez.backend.common.api.BaseResponse;
-import com.example.travelez.backend.itinerary.dto.ItineraryRequest;
-import com.example.travelez.backend.itinerary.service.ItineraryService;
+import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.request.SaveItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
+import com.example.travelez.backend.itinerary.service.impl.ItineraryServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper; // Import thêm cái này
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,26 +18,30 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class ItineraryController {
 
-    private final ItineraryService itineraryService;
+    private final ItineraryServiceImpl itineraryService;
     private final ObjectMapper objectMapper; // Inject ObjectMapper có sẵn của Spring
 
-    @PostMapping("/plan")
-    public ResponseEntity<BaseResponse<Object>> planTrip(@RequestBody ItineraryRequest request) {
+    @PostMapping("/generate")
+    public ResponseEntity<BaseResponse<ItineraryResponse>> generateItinerary(
+            @RequestBody CreateItineraryRequest request) {
 
-        // 1. Lấy chuỗi JSON từ Service (vẫn là String)
-        String resultJsonString = itineraryService.planTrip(request.getPrompt());
+        // Gọi Service xử lý logic
+        ItineraryResponse response = itineraryService.generateSmartItinerary(request);
 
-        try {
-            // 2. BIẾN HÓA: Parse chuỗi String đó thành Object (Map hoặc JsonNode)
-            // Jackson sẽ biến "{\n \"trip_title\": ... }" thành Object Java xịn
-            Object jsonObject = objectMapper.readValue(resultJsonString, Object.class);
+        return BaseResponse.success(response);
+    }
 
-            // 3. Trả về Object đó. Spring sẽ serialize nó thành JSON chuẩn (không bị escape)
-            return BaseResponse.success(jsonObject);
+    @PostMapping("/save")
+    public ResponseEntity<BaseResponse<Long>> saveItinerary(@RequestBody SaveItineraryRequest request) {
 
-        } catch (Exception e) {
-            // Trường hợp AI trả về bậy bạ không parse được, trả về dạng String để debug
-            return BaseResponse.success(resultJsonString);
-        }
+        Long itineraryId = itineraryService.saveItinerary(request);
+
+        return BaseResponse.success(itineraryId, ResultCode.SUCCESS, "Lưu lộ trình thành công");
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BaseResponse<ItineraryResponse>> getItineraryDetail(@PathVariable Long id) {
+        ItineraryResponse response = itineraryService.getItineraryDetail(id);
+        return BaseResponse.success(response);
     }
 }
