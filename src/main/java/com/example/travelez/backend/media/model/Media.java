@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "media")
 @Getter
@@ -27,10 +29,13 @@ public class Media {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(name = "url", nullable = false)
+    @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
 
     @Column(name = "type", nullable = false)
     @Enumerated(EnumType.STRING)
     private MediaType type;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 }

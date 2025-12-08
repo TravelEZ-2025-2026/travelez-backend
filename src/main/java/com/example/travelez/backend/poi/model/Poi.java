@@ -44,7 +44,7 @@ public class Poi extends AuditableEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, columnDefinition = "TEXT")
     private String name;
 
     @Column(name = "poi_type", nullable = false)
@@ -58,10 +58,10 @@ public class Poi extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private PoiStatus systemStatus;
 
-    @Column(name = "address")
+    @Column(name = "address", columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "website")
+    @Column(name = "website", columnDefinition = "TEXT")
     private String website;
 
     @Column(name = "phone_number")
@@ -83,10 +83,10 @@ public class Poi extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private PlaceStatus status;
 
-    @Column(name = "google_maps_url")
+    @Column(name = "google_maps_url", columnDefinition = "TEXT")
     private String googleMapsUrl;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "google_place_id", unique = true)
