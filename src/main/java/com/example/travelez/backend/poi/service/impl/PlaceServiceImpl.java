@@ -3,6 +3,7 @@ package com.example.travelez.backend.poi.service.impl;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
+import com.example.travelez.backend.common.exception.ErrorCode;
 import com.example.travelez.backend.poi.dto.response.PlaceBaseResponse;
 import com.example.travelez.backend.poi.mapper.PlaceMapper;
 import com.example.travelez.backend.poi.model.Place;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PlaceServiceImpl implements PlaceService {
     private final PlaceRepository placeRepository;
     private final PlaceMapper placeMapper;
@@ -41,5 +44,13 @@ public class PlaceServiceImpl implements PlaceService {
         } catch (Exception e) {
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error fetching places");
         }
+    }
+
+    @Override
+    public Place getPlaceByCodename(String codeName) {
+        return placeRepository.findByCodename(codeName)
+                .orElseThrow(() -> new ApiException(
+                        ErrorCode.DESTINATION_NOT_FOUND, "Không tìm thấy thành phố: " + codeName
+                ));
     }
 }

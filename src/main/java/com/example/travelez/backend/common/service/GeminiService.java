@@ -1,19 +1,23 @@
 package com.example.travelez.backend.common.service;
 
+import com.example.travelez.backend.common.exception.Asserts;
+import com.example.travelez.backend.common.exception.ErrorCode;
 import com.google.genai.Client;
+import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GeminiService {
     private final Client client;
 
-    // Enum chọn model (Bạn có thể mở rộng thêm)
     public enum ModelType {
         PRO("gemini-2.5-pro"),
-        FLASH("gemini-2.5-flash"); // Hoặc gemini-2.5-flash nếu có quyền
+        FLASH("gemini-2.5-flash");
 
         public final String modelName;
 
@@ -22,19 +26,90 @@ public class GeminiService {
         }
     }
 
-    public String callGemini(String promptText, ModelType modelType){
-        try{
+    /**
+     * 1. BASIC METHOD: Dùng cho các tác vụ Text thông thường (Zero-shot, Chat).
+     * Ví dụ: Chatbot CSKH, Tóm tắt văn bản đơn giản.
+     */
+    public String generateText(String promptText, ModelType modelType) {
+        return callGeminiInternal(promptText, modelType, null);
+    }
+
+    /**
+     * 2. STRUCTURED JSON METHOD: Dùng cho Module 1, 6, 7.
+     * Tự động ép kiểu output về JSON để tránh lỗi format.
+     */
+    public String generateJson(String promptText, ModelType modelType) {
+        try {
+            // Cấu hình ép kiểu JSON (Native Schema Enforcement)
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .responseMimeType("application/json")
+                    .temperature(0.2f)
+                    .build();
+
             GenerateContentResponse response = client.models.generateContent(
                     modelType.modelName,
                     promptText,
-                    null // Config thêm (temperature...) có thể để null nếu dùng mặc định
+                    config
             );
 
+            if (response == null || response.text() == null) {
+                Asserts.fail(ErrorCode.AI_SERVICE_ERROR, "Empty response from Gemini");
+            }
+
             return response.text();
+
+        } catch (Exception e) {
+            log.error("Gemini API Error: ", e);
+            throw new com.example.travelez.backend.common.exception.ApiException(
+                    ErrorCode.AI_SERVICE_ERROR, "Error calling AI Provider: " + e.getMessage()
+            );
         }
-        catch (Exception e){
-            e.printStackTrace();
-            return "Error calling Gemini API: " + e.getMessage();
+    }
+
+    /**
+     * 3. CACHED CONTENT METHOD: Dùng riêng cho Module 1 (Lập lộ trình với 500 POIs).
+     * @param cacheName: Tên cache đã tạo (VD: "cache_hochiminh_poi")
+     */
+    public String generateWithCache(String promptText, String cacheName, ModelType modelType) {
+        GenerateContentConfig config = GenerateContentConfig.builder()
+                .responseMimeType("application/json")
+                .cachedContent(cacheName)
+                .temperature(0.2f)
+                .build();
+
+        return callGeminiInternal(promptText, modelType, config);
+    }
+
+    /**
+     * 4. MULTIMODAL METHOD: Dùng cho Module 5 (Kiểm duyệt Video/Ảnh).
+     * (sẽ mở rộng khi làm tới Module 5)
+     */
+    // public String generateMultimodal(...) { ... }
+
+    // --- INTERNAL HELPER (Hàm lõi xử lý gọi API) ---
+    private String callGeminiInternal(String prompt, ModelType model, GenerateContentConfig config) {
+        try {
+            if (config == null) {
+                config = GenerateContentConfig.builder()
+                        .temperature(0.4f)
+                        .build();
+            }
+
+            GenerateContentResponse response = client.models.generateContent(
+                    model.modelName,
+                    prompt,
+                    config
+            );
+
+            if (response != null && response.text() != null) {
+                return response.text();
+            } else {
+                return "{\"error\": \"Empty response from Gemini\"}";
+            }
+
+        } catch (Exception e) {
+            log.error("Error calling Gemini API: {}", e.getMessage());
+            return "{\"error\": \"Gemini API Error: " + e.getMessage() + "\"}";
         }
     }
 }
