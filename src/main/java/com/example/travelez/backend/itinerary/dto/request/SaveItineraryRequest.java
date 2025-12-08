@@ -9,10 +9,6 @@ import java.util.List;
 
 @Data
 public class SaveItineraryRequest {
-    private String destinationCity;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private BigDecimal budget;
-    private List<String> styles;
+    private CreateItineraryRequest createRequest;
     private ItineraryResponse aiResult;
 }

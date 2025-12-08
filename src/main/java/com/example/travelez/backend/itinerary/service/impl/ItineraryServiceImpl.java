@@ -6,6 +6,7 @@ import com.example.travelez.backend.common.exception.ErrorCode;
 import com.example.travelez.backend.common.service.GeminiService;
 import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
 import com.example.travelez.backend.itinerary.dto.request.SaveItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.response.GetItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
@@ -48,7 +49,12 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Transactional(readOnly = true)
     public ItineraryResponse generateSmartItinerary(CreateItineraryRequest request) {
         // 1. Lấy dữ liệu Context (Real Data)
-        List<Poi> contextPois = poiService.getActivePoisByCity(request.getDestinationCity());
+        List<Poi> contextPois = new ArrayList<>();
+        if (request.getDestinationCities() != null) {
+            for (String city : request.getDestinationCities()) {
+                contextPois.addAll(poiService.getActivePoisByCity(city));
+            }
+        }
         log.info("Generating itinerary with context of {} POIs", contextPois.size());
 
         // 2. Serialize POI để nạp vào Prompt (Rút gọn để tiết kiệm token)
@@ -98,14 +104,21 @@ public class ItineraryServiceImpl implements ItineraryService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "Dữ liệu lộ trình từ AI không được để trống");
         }
 
+        CreateItineraryRequest meta = request.getCreateRequest();
+
         // 3. TẠO ITINERARY HEADER
         Itinerary itinerary = Itinerary.builder()
-                .traveler(traveler) // Gán User thật vào
+                .traveler(traveler)
                 .title(aiData.getTripTitle())
-                .type(request.getStyles() != null ? String.join(", ", request.getStyles()) : "General")
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .budget(request.getBudget())
+                .destinationCities(meta.getDestinationCities())
+                .styles(meta.getStyles())
+                .startDate(meta.getStartDate())
+                .endDate(meta.getEndDate())
+                .budget(meta.getBudget())
+                .hasKids(meta.getHasKids())
+                .hasPets(meta.getHasPets())
+                .companion(meta.getCompanion())
+                .userNotes(meta.getSpecialNotes())
                 .objectives(aiData.getReasoningSummary())
                 .status(Itinerary.ItineraryStatus.PLANNING)
                 .build();
@@ -151,7 +164,7 @@ public class ItineraryServiceImpl implements ItineraryService {
 
     @Override
     @Transactional(readOnly = true)
-    public ItineraryResponse getItineraryDetail(Long itineraryId) {
+    public GetItineraryResponse getItineraryDetail(Long itineraryId) {
         // 1. Tìm Itinerary cha
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lộ trình"));
@@ -197,10 +210,17 @@ public class ItineraryServiceImpl implements ItineraryService {
                         // Có liên kết POI -> Lấy ID và Name chuẩn từ bảng poi
                         dto.setLocationId(act.getPoi().getId());
                         dto.setLocationName(act.getPoi().getName());
+
+                        if (act.getPoi().getMedias() != null && !act.getPoi().getMedias().isEmpty()) {
+                            dto.setLocationImage(act.getPoi().getMedias().get(0).getUrl());
+                        } else {
+                            dto.setLocationImage(null);
+                        }
                     } else {
                         // Không có POI (Địa điểm ảo/Custom) -> Lấy ID=0 và Name từ description
                         dto.setLocationId(0L);
                         dto.setLocationName(parts.length > 1 ? parts[1] : "");
+                        dto.setLocationImage(null);
                     }
 
                     dto.setActivityType(act.getType());
@@ -219,9 +239,15 @@ public class ItineraryServiceImpl implements ItineraryService {
             }
         }
 
-        ItineraryResponse response = new ItineraryResponse();
+        GetItineraryResponse response = new GetItineraryResponse();
         response.setTripTitle(itinerary.getTitle());
         response.setReasoningSummary(itinerary.getObjectives());
+
+        response.setStyles(itinerary.getStyles());
+        response.setSpecialNotes(itinerary.getUserNotes());
+        response.setHasKids(itinerary.getHasKids());
+        response.setHasPets(itinerary.getHasPets());
+        response.setCompanion(itinerary.getCompanion());
         response.setDays(days);
 
         return response;
@@ -253,6 +279,8 @@ public class ItineraryServiceImpl implements ItineraryService {
         if (Boolean.TRUE.equals(req.getHasPets())) {
             companionInfo.append(" (Có mang theo thú cưng - Cần không gian mở)");
         }
+
+        String destinations = req.getDestinationCities() != null ? String.join(", ", req.getDestinationCities()) : "";
         return """
             ### 1. VAI TRÒ & LUẬT CẤM (ROLE & CONSTRAINTS)
             Bạn là TravelEZ Expert - một hướng dẫn viên du lịch địa phương cực kỳ am hiểu, nhiệt tình và tâm lý.
@@ -326,9 +354,9 @@ public class ItineraryServiceImpl implements ItineraryService {
             }
             """.formatted(
                 poiContext,
-                req.getDestinationCity(),
+                destinations,
                 req.getStartDate(), req.getEndDate(),
-                req.getBudgetLevel(),
+                req.getBudget(),
                 req.getStyles(),
                 companionInfo.toString(),
                 req.getSpecialNotes()

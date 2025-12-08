@@ -4,6 +4,7 @@ import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
 import com.example.travelez.backend.itinerary.dto.request.SaveItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.response.GetItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.service.impl.ItineraryServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper; // Import thêm cái này
@@ -40,8 +41,8 @@ public class ItineraryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<ItineraryResponse>> getItineraryDetail(@PathVariable Long id) {
-        ItineraryResponse response = itineraryService.getItineraryDetail(id);
+    public ResponseEntity<BaseResponse<GetItineraryResponse>> getItineraryDetail(@PathVariable Long id) {
+        GetItineraryResponse response = itineraryService.getItineraryDetail(id);
         return BaseResponse.success(response);
     }
 }

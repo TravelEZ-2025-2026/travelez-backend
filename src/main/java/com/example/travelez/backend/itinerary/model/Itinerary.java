@@ -4,6 +4,8 @@ import com.example.travelez.backend.common.model.AuditableEntity;
 import com.example.travelez.backend.users.model.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,8 +27,16 @@ public class Itinerary extends AuditableEntity {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false)
-    private String type; // Mapping từ styles (VD: "Food Tourism, Photography")
+    @Column(name = "styles", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<String> styles;
+
+    @Column(name = "destination_cities", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<String> destinationCities;
+
+    @Column(name = "user_notes", columnDefinition = "TEXT")
+    private String userNotes; // Lưu specialNotes
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -36,6 +46,15 @@ public class Itinerary extends AuditableEntity {
 
     @Column(precision = 12, scale = 2)
     private BigDecimal budget;
+
+    @Column(name = "has_kids")
+    private Boolean hasKids;
+
+    @Column(name = "has_pets")
+    private Boolean hasPets;
+
+    @Column(name = "companion")
+    private String companion;
 
     @Column(columnDefinition = "TEXT")
     private String objectives; // Mapping từ "reasoningSummary"

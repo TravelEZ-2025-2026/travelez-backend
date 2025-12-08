@@ -11,6 +11,13 @@ import java.util.List;
 @Repository
 public interface ItineraryActivityRepository extends JpaRepository<ItineraryActivity, Long> {
 
-    @Query("SELECT a FROM ItineraryActivity a LEFT JOIN FETCH a.poi WHERE a.itinerary.id = :itineraryId ORDER BY a.itineraryDate ASC, a.startTime ASC")
+    @Query("""
+        SELECT a 
+        FROM ItineraryActivity a 
+        LEFT JOIN FETCH a.poi p 
+        LEFT JOIN FETCH p.medias 
+        WHERE a.itinerary.id = :itineraryId 
+        ORDER BY a.itineraryDate ASC, a.startTime ASC
+    """)
     List<ItineraryActivity> findByItineraryIdOrderByItineraryDateAscStartTimeAsc(@Param("itineraryId") Long itineraryId);
 }
