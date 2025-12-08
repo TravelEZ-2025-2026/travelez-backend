@@ -6,7 +6,10 @@ import com.example.travelez.backend.poi.model.enums.PlaceStatus;
 import com.example.travelez.backend.poi.model.enums.PoiStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +21,7 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
             PoiStatus systemStatus,
             PlaceStatus status
     );
+
+    @Query("SELECT p FROM Poi p LEFT JOIN FETCH p.medias WHERE p.id IN :ids")
+    List<Poi> findAllByIdsWithImages(@Param("ids") Collection<Long> ids);
 }

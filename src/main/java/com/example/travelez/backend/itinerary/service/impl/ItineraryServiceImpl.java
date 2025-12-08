@@ -28,10 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,6 +45,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final PoiRepository poiRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public ItineraryResponse generateSmartItinerary(CreateItineraryRequest request) {
         // 1. Lấy dữ liệu Context (Real Data)
         List<Poi> contextPois = poiService.getActivePoisByCity(request.getDestinationCity());
@@ -64,11 +62,12 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         // BƯỚC 5: HẬU XỬ LÝ & PARSE (Post-processing)
         try {
-            // A. Clean JSON String bằng Regex trước khi Parse
             String cleanJson = jsonResult.replaceAll("\\s*[\\(\\[](?i)(?:ID\\s*)?\\d+[\\)\\]]", "");
+            ItineraryResponse response = gson.fromJson(cleanJson, ItineraryResponse.class);
 
-            // B. Parse sang Object
-            return gson.fromJson(cleanJson, ItineraryResponse.class);
+            enrichItineraryWithImages(response);
+
+            return response;
 
         } catch (Exception e) {
             log.error("Failed to parse AI Response: {}", jsonResult);
@@ -353,5 +352,52 @@ public class ItineraryServiceImpl implements ItineraryService {
         if (hour >= 5 && hour < 12) return "MORNING";
         if (hour >= 12 && hour < 18) return "AFTERNOON";
         return "EVENING";
+    }
+
+    private void enrichItineraryWithImages(ItineraryResponse response) {
+        if (response == null || response.getDays() == null) return;
+
+        // BƯỚC A: GOM ĐƠN (Lấy tất cả ID địa điểm trong lịch trình)
+        Set<Long> poiIds = new HashSet<>();
+        for (ItineraryResponse.DayPlan day : response.getDays()) {
+            if (day.getActivities() != null) {
+                for (ItineraryResponse.Activity act : day.getActivities()) {
+                    if (act.getLocationId() > 0) {
+                        poiIds.add(act.getLocationId());
+                    }
+                }
+            }
+        }
+
+        if (poiIds.isEmpty()) return; // Không có địa điểm nào cần lấy ảnh -> Thoát
+
+        // BƯỚC B: VÀO KHO (Query DB 1 lần duy nhất)
+        List<Poi> pois = poiRepository.findAllByIdsWithImages(poiIds);
+
+        // BƯỚC C: TẠO MAP TRA CỨU (ID -> Link Ảnh)
+        Map<Long, String> imageMap = new HashMap<>();
+        for (Poi poi : pois) {
+            // Kiểm tra xem POI có list media không và list đó có rỗng không
+            if (poi.getMedias() != null && !poi.getMedias().isEmpty()) {
+                // Lấy ảnh đầu tiên làm đại diện.
+                // Giả sử class Media có hàm getUrl() hoặc getUri() - Bạn check lại Model Media nhé
+                imageMap.put(poi.getId(), poi.getMedias().get(0).getUrl());
+            }
+        }
+
+        // BƯỚC D: DÁN ẢNH (Gán ngược lại vào Response)
+        for (ItineraryResponse.DayPlan day : response.getDays()) {
+            if (day.getActivities() != null) {
+                for (ItineraryResponse.Activity act : day.getActivities()) {
+                    Long id = act.getLocationId();
+                    // Nếu ID này có trong kho ảnh -> Gán link
+                    if (imageMap.containsKey(id)) {
+                        act.setLocationImage(imageMap.get(id));
+                    } else {
+                        act.setLocationImage(null);
+                    }
+                }
+            }
+        }
     }
 }

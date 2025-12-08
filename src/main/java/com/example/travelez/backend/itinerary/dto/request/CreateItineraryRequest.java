@@ -7,7 +7,7 @@ import java.util.List;
 
 @Data
 public class CreateItineraryRequest {
-    private String destinationCity; // VD: Ho Chi Minh City
+    private String destinationCity; // VD: thanh_pho_ho_chi_minh
     private String budgetLevel;     // VD: 5 Million VND
     private LocalDate startDate;    // VD: 2025-11-11
     private LocalDate endDate;      // VD: 2025-11-14

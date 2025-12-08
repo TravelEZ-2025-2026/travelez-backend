@@ -26,5 +26,6 @@ public class ItineraryResponse {
         private String activityName;
         private String activityType; // VD: Sightseeing, Dining
         private String notes;      // Ghi chú của AI (VD: "Nên đặt bàn trước")
+        private String locationImage;
     }
 }
