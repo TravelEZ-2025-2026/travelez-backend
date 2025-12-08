@@ -21,17 +21,15 @@ public enum ErrorCode implements IErrorCode {
     RESOURCE_NOT_FOUND(404, "Không tìm thấy tài nguyên yêu cầu"),
 
     // --- AI / GEMINI MODULE SPECIFIC ---
-    // Lỗi khi gọi sang Google Gemini (Mạng, Key, Quota...)
-    AI_SERVICE_UNAVAILABLE(503, "Dịch vụ AI hiện không khả dụng, vui lòng thử lại sau"),
-
-    // Lỗi khi AI không thể xử lý prompt (Prompt quá dài, vi phạm policy...)
-    AI_PROCESSING_ERROR(422, "AI không thể xử lý yêu cầu này"),
-
-    // Lỗi khi AI trả về JSON sai format (Hallucination)
+    AI_SERVICE_ERROR(503, "Dịch vụ AI không phản hồi"),
     AI_RESPONSE_FORMAT_ERROR(500, "Lỗi định dạng dữ liệu từ AI"),
 
-    // Lỗi logic nghiệp vụ: Không tìm thấy địa điểm phù hợp
-    ITINERARY_GENERATION_FAILED(400, "Không tìm thấy địa điểm phù hợp với yêu cầu của bạn");
+    // --- TRIP / ITINERARY ---
+    DESTINATION_NOT_FOUND(404, "Không tìm thấy địa điểm du lịch yêu cầu"),
+    NO_ACTIVE_POIS(400, "Không có địa điểm vui chơi nào khả dụng tại thành phố này"),
+    ITINERARY_GENERATION_FAILED(500, "Không thể tạo lộ trình, vui lòng thử lại"),
+    AI_SERVICE_UNAVAILABLE(503, "Hệ thống AI đang quá tải, vui lòng thử lại sau"),
+    AI_PROCESSING_ERROR(422, "Không thể xử lý yêu cầu với AI");
 
     private final int code;
     private final String message;
