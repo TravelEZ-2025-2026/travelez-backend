@@ -21,27 +21,24 @@ public class ItineraryActivity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Mapping từ: activityName + " tại " + locationName
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    // Mapping từ timeSlot (lấy giờ bắt đầu)
     @Column(name = "start_time")
     private LocalTime startTime;
 
-    // Mapping logic: Sáng/Chiều/Tối
+    @Column(name = "end_time")
+    private LocalTime endTime;
+
     @Column(name = "time_of_day", length = 50)
     private String timeOfDay;
 
-    // Mapping từ activityType (ATTRACTION, FOOD...)
     @Column(length = 50)
     private String type;
 
-    // Mapping từ notes
     @Column(columnDefinition = "TEXT")
     private String note;
 
-    // Các cột chi phí (để 0 hoặc null ban đầu)
     @Column(name = "activity_cost", precision = 10, scale = 2)
     private BigDecimal activityCost;
 
@@ -56,6 +53,6 @@ public class ItineraryActivity {
     private Itinerary itinerary;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "poi_id") // Có thể null nếu là Custom Activity (Khách sạn)
+    @JoinColumn(name = "poi_id")
     private Poi poi;
 }

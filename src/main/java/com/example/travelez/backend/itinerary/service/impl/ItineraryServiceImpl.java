@@ -71,7 +71,9 @@ public class ItineraryServiceImpl implements ItineraryService {
             String cleanJson = jsonResult.replaceAll("\\s*[\\(\\[](?i)(?:ID\\s*)?\\d+[\\)\\]]", "");
             ItineraryResponse response = gson.fromJson(cleanJson, ItineraryResponse.class);
 
-            enrichItineraryWithImages(response);
+            enrichItineraryDetails(response);
+
+            response.setDestinationCities(request.getDestinationCities());
 
             return response;
 
@@ -93,7 +95,7 @@ public class ItineraryServiceImpl implements ItineraryService {
             throw new ApiException(ErrorCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
         }
 
-        String currentUsername = authentication.getName(); // Lấy username từ token đã giải mã
+        String currentUsername = authentication.getName();
 
         // 2. TÌM ENTITY USER TRONG DB
         User traveler = userRepository.findByUsername(currentUsername)
@@ -134,12 +136,23 @@ public class ItineraryServiceImpl implements ItineraryService {
 
                 for (ItineraryResponse.Activity aiActivity : day.getActivities()) {
 
-                    LocalTime startTime = parseStartTime(aiActivity.getTimeSlot());
+                    LocalTime startTime = parseTime(aiActivity.getStartTime());
+                    LocalTime endTime = parseTime(aiActivity.getEndTime());
+
+                    BigDecimal cost = BigDecimal.ZERO;
+
+                    try {
+                        if (aiActivity.getPrice() != null && !aiActivity.getPrice().equalsIgnoreCase("Free")) {
+                            // Xóa bỏ chữ cái nếu có (VD: "50k" -> "50")
+                            String cleanPrice = aiActivity.getPrice().replaceAll("[^0-9.]", "");
+                            cost = new BigDecimal(cleanPrice);
+                        }
+                    } catch (Exception e) { cost = BigDecimal.ZERO; }
 
                     Poi linkedPoi = null;
                     // Chỉ tìm nếu ID hợp lệ (> 0)
-                    if (aiActivity.getLocationId() > 0) {
-                        linkedPoi = poiRepository.findById(aiActivity.getLocationId())
+                    if (aiActivity.getId() > 0) {
+                        linkedPoi = poiRepository.findById(aiActivity.getId())
                                 .orElse(null);
                     }
 
@@ -147,10 +160,12 @@ public class ItineraryServiceImpl implements ItineraryService {
                             .itinerary(savedItinerary)
                             .itineraryDate(currentDate)
                             .startTime(startTime)
+                            .endTime(endTime)
                             .timeOfDay(calculateTimeOfDay(startTime))
                             .type(aiActivity.getActivityType())
                             .description(aiActivity.getActivityName())
-                            .note(aiActivity.getNotes())
+                            .note(aiActivity.getAiTip())
+                            .activityCost(cost)
                             .poi(linkedPoi)
                             .build();
 
@@ -192,13 +207,6 @@ public class ItineraryServiceImpl implements ItineraryService {
                 for (ItineraryActivity act : entry.getValue()) {
                     ItineraryResponse.Activity dto = new ItineraryResponse.Activity();
 
-                    // A. TimeSlot: Lấy giờ HH:mm
-                    if (act.getStartTime() != null) {
-                        dto.setTimeSlot(act.getStartTime().toString().substring(0, 5));
-                    } else {
-                        dto.setTimeSlot("");
-                    }
-
                     // B. Xử lý Tên Hoạt động (Lấy từ phần đầu của description)
                     // Format lúc save: "Tên Hoạt Động|||Tên Địa Điểm"
                     String rawDesc = act.getDescription() != null ? act.getDescription() : "";
@@ -208,23 +216,34 @@ public class ItineraryServiceImpl implements ItineraryService {
                     // C. Xử lý Địa điểm (QUAN TRỌNG: Ưu tiên POI thật)
                     if (act.getPoi() != null) {
                         // Có liên kết POI -> Lấy ID và Name chuẩn từ bảng poi
-                        dto.setLocationId(act.getPoi().getId());
-                        dto.setLocationName(act.getPoi().getName());
+                        dto.setId(act.getPoi().getId());
+                        dto.setTitle(act.getPoi().getName());
+                        dto.setAddress(act.getPoi().getAddress());
+                        dto.setLat(act.getPoi().getLatitude());
+                        dto.setLng(act.getPoi().getLongitude());
+                        dto.setActivityName(act.getDescription());
 
                         if (act.getPoi().getMedias() != null && !act.getPoi().getMedias().isEmpty()) {
-                            dto.setLocationImage(act.getPoi().getMedias().get(0).getUrl());
+                            dto.setImage(act.getPoi().getMedias().get(0).getUrl());
                         } else {
-                            dto.setLocationImage(null);
+                            dto.setImage(null);
                         }
                     } else {
-                        // Không có POI (Địa điểm ảo/Custom) -> Lấy ID=0 và Name từ description
-                        dto.setLocationId(0L);
-                        dto.setLocationName(parts.length > 1 ? parts[1] : "");
-                        dto.setLocationImage(null);
+                        // Không có POI (Địa điểm ảo/Custom)
+                        dto.setId(0L);
+                        dto.setTitle("Hiện tại chưa có tên địa điểm trong csdl");
+                        dto.setActivityName("Hoạt động tự do");
+                        dto.setAddress("N/A");
+                        dto.setLat(0.0);
+                        dto.setLng(0.0);
+                        dto.setImage(null);
                     }
 
                     dto.setActivityType(act.getType());
-                    dto.setNotes(act.getNote());
+                    dto.setAiTip(act.getNote());
+                    dto.setStartTime(formatTime(act.getStartTime()));
+                    dto.setEndTime(formatTime(act.getEndTime()));
+                    dto.setPrice(act.getActivityCost() != null ? act.getActivityCost().toString() : "0");
 
                     activityDTOs.add(dto);
                 }
@@ -241,6 +260,7 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         GetItineraryResponse response = new GetItineraryResponse();
         response.setTripTitle(itinerary.getTitle());
+        response.setDestinationCities(itinerary.getDestinationCities());
         response.setReasoningSummary(itinerary.getObjectives());
 
         response.setStyles(itinerary.getStyles());
@@ -301,12 +321,7 @@ public class ItineraryServiceImpl implements ItineraryService {
                 + Nguyên tắc Xen kẽ (Interleaving): KHÔNG xếp 2 địa điểm Tốn sức (High) đi liền nhau. Hãy chèn 1 điểm Phục hồi (Low) vào giữa.
                 + Quy tắc "Dead Rest" (Tránh nắng): Khung giờ 12:00 - 14:00 BẮT BUỘC phải là hoạt động trong nhà, ăn uống hoặc nghỉ ngơi. Tuyệt đối không xếp hoạt động ngoài trời giờ này.
             
-            6. YÊU CẦU LƯU TRÚ (ACCOMMODATION LOGISTICS):
-                + Trong danh sách [POI CONTEXT] có bao gồm các địa điểm lưu trú (Khách sạn/Homestay/Resort).
-                + Hãy chọn ra 1 địa điểm lưu trú phù hợp nhất với [Ngân sách] và [Phong cách] của khách để làm nơi nghỉ ngơi xuyên suốt chuyến đi.
-                + Vào Ngày 1: Phải có hoạt động "Check-in/Nhận phòng" tại địa điểm này (Ưu tiên khoảng 14:00 hoặc khi mới đến).
-                + Cuối mỗi ngày: Phải có hoạt động về lại địa điểm lưu trú này để nghỉ ngơi.
-            7. RÀNG BUỘC ĐỐI TƯỢNG (COMPANION CONSTRAINTS):
+            6. RÀNG BUỘC ĐỐI TƯỢNG (COMPANION CONSTRAINTS):
                 + Nếu có **Trẻ em**: TUYỆT ĐỐI KHÔNG xếp lịch đi Bar/Pub/Nightlife/Khu đèn đỏ.
                 + Nếu có **Thú cưng**: BẮT BUỘC chọn địa điểm không gian mở, pet-friendly. TRÁNH bảo tàng/di tích nghiêm ngặt.
             
@@ -341,12 +356,13 @@ public class ItineraryServiceImpl implements ItineraryService {
                   "theme": "Chủ đề trải nghiệm trong ngày",
                   "activities": [
                     { 
-                        "timeSlot": "HH:MM", (Chỉ cần đưa ra GIỜ BẮT ĐẦU (Start Time), không cần giờ kết thúc.)
-                        "locationId": <ID_INTEGER_FROM_CONTEXT>,
+                        "id": <ID_INTEGER_FROM_CONTEXT>, // Bắt buộc phải có và KHỚP với ID trong [POI CONTEXT], nếu không có thì để 0
+                        "startTime": "HH:MM", // Giờ bắt đầu
+                        "endTime": "HH:MM",   // Giờ kết thúc (Bạn tự ước lượng thời gian chơi hợp lý)
                         "locationName": "Tên địa điểm (Lấy chính xác từ Context)", 
                         "activityName": "Tên hoạt động", 
                         "activityType": "...", 
-                        "notes": "Lời khuyên thực tế và sinh động (2-3 câu). Gợi ý cụ thể: Nên chụp ảnh góc nào? Món nào 'must-try'? Nên đi đứng/ăn mặc ra sao? (Viết tự nhiên, không chứa ID)" 
+                        "aiTip": "Lời khuyên thực tế và sinh động (2-3 câu). Gợi ý cụ thể: Nên chụp ảnh góc nào? Món nào 'must-try'? Nên đi đứng/ăn mặc ra sao? (Viết tự nhiên, không chứa ID)" 
                     }
                   ]
                 }
@@ -363,7 +379,7 @@ public class ItineraryServiceImpl implements ItineraryService {
         );
     }
 
-    private LocalTime parseStartTime(String timeString) {
+    private LocalTime parseTime(String timeString) {
         try {
             if (timeString == null) return null;
             // Phòng hờ AI vẫn trả về "09:00 - 10:00", ta chỉ lấy phần trước dấu gạch
@@ -374,6 +390,11 @@ public class ItineraryServiceImpl implements ItineraryService {
         }
     }
 
+    private String formatTime(LocalTime time) {
+        if (time == null) return null;
+        return time.toString(); // Returns format HH:mm:ss
+    }
+
     private String calculateTimeOfDay(LocalTime time) {
         if (time == null) return "ANYTIME";
         int hour = time.getHour();
@@ -382,47 +403,60 @@ public class ItineraryServiceImpl implements ItineraryService {
         return "EVENING";
     }
 
-    private void enrichItineraryWithImages(ItineraryResponse response) {
+    private void enrichItineraryDetails(ItineraryResponse response) {
         if (response == null || response.getDays() == null) return;
 
-        // BƯỚC A: GOM ĐƠN (Lấy tất cả ID địa điểm trong lịch trình)
+        // 1. Gom toàn bộ ID từ AI trả về
         Set<Long> poiIds = new HashSet<>();
         for (ItineraryResponse.DayPlan day : response.getDays()) {
             if (day.getActivities() != null) {
                 for (ItineraryResponse.Activity act : day.getActivities()) {
-                    if (act.getLocationId() > 0) {
-                        poiIds.add(act.getLocationId());
+                    if (act.getId() > 0) {
+                        poiIds.add(act.getId());
                     }
                 }
             }
         }
 
-        if (poiIds.isEmpty()) return; // Không có địa điểm nào cần lấy ảnh -> Thoát
+        if (poiIds.isEmpty()) return;
 
-        // BƯỚC B: VÀO KHO (Query DB 1 lần duy nhất)
+        // 2. Query DB 1 lần (Batch Query)
         List<Poi> pois = poiRepository.findAllByIdsWithImages(poiIds);
 
-        // BƯỚC C: TẠO MAP TRA CỨU (ID -> Link Ảnh)
-        Map<Long, String> imageMap = new HashMap<>();
-        for (Poi poi : pois) {
-            // Kiểm tra xem POI có list media không và list đó có rỗng không
-            if (poi.getMedias() != null && !poi.getMedias().isEmpty()) {
-                // Lấy ảnh đầu tiên làm đại diện.
-                // Giả sử class Media có hàm getUrl() hoặc getUri() - Bạn check lại Model Media nhé
-                imageMap.put(poi.getId(), poi.getMedias().get(0).getUrl());
-            }
-        }
+        // Tạo Map để tra cứu nhanh: ID -> Poi Object
+        Map<Long, Poi> poiMap = pois.stream()
+                .collect(Collectors.toMap(Poi::getId, p -> p));
 
-        // BƯỚC D: DÁN ẢNH (Gán ngược lại vào Response)
+        // 3. Duyệt lại Response để điền thông tin chính xác
         for (ItineraryResponse.DayPlan day : response.getDays()) {
             if (day.getActivities() != null) {
                 for (ItineraryResponse.Activity act : day.getActivities()) {
-                    Long id = act.getLocationId();
-                    // Nếu ID này có trong kho ảnh -> Gán link
-                    if (imageMap.containsKey(id)) {
-                        act.setLocationImage(imageMap.get(id));
+                    Long id = act.getId();
+
+                    if (poiMap.containsKey(id)) {
+                        Poi realPoi = poiMap.get(id);
+
+                        // A. Thông tin địa lý & hiển thị
+                        act.setTitle(realPoi.getName());
+                        act.setAddress(realPoi.getAddress());
+                        act.setLat(realPoi.getLatitude());
+                        act.setLng(realPoi.getLongitude());
+                        act.setPrice("0");
+
+                        // B. Xử lý ảnh (Lấy ảnh đầu tiên)
+                        if (realPoi.getMedias() != null && !realPoi.getMedias().isEmpty()) {
+                            act.setImage(realPoi.getMedias().get(0).getUrl());
+                        } else {
+                            act.setImage("https://default-image-url.com/placeholder.jpg");
+                        }
+
                     } else {
-                        act.setLocationImage(null);
+                        act.setTitle(act.getTitle() != null ? act.getTitle() : "Hoạt động tự do");
+                        act.setAddress("N/A");
+                        act.setImage(null);
+                        act.setLat(0.0);
+                        act.setLng(0.0);
+                        act.setPrice("0");
                     }
                 }
             }

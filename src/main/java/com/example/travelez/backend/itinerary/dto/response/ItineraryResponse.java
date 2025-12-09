@@ -2,6 +2,8 @@ package com.example.travelez.backend.itinerary.dto.response;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -21,12 +23,18 @@ public class ItineraryResponse {
 
     @Data
     public static class Activity {
-        private String timeSlot;
-        private long locationId;
-        private String locationName;
+        private long id;
+        private String title;
+        private String startTime;
+        private String endTime;
+        private String price;
+
         private String activityName;
         private String activityType;
-        private String notes;
-        private String locationImage;
+        private String address;
+        private String aiTip;
+        private String image;
+        private Double lat;
+        private Double lng;
     }
 }
