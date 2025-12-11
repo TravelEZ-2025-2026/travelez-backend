@@ -1,15 +1,14 @@
 package com.example.travelez.backend.users.dto.request;
 
-import java.time.LocalDateTime;
-
 import com.example.travelez.backend.users.model.User.GenderType;
 import com.example.travelez.backend.users.model.User.RoleType;
-
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 @Data
 public class UserRegisterRequest {
@@ -30,5 +29,8 @@ public class UserRegisterRequest {
     private GenderType gender;
 
     private LocalDateTime dob;
+
+    //    @NotBlank(message = "Recaptcha token is required")
+    private String recaptchaToken;
 
 }
