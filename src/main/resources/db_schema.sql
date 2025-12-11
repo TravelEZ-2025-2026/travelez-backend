@@ -139,3 +139,5 @@ CREATE TABLE user_oauth_tokens (
 ALTER TABLE admin ADD CONSTRAINT fk_admin_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE traveler ADD CONSTRAINT fk_traveler_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE provider ADD CONSTRAINT fk_provider_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE media ADD COLUMN cloud_name TEXT;

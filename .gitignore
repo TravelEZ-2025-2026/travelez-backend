@@ -31,3 +31,4 @@ build/
 ### VS Code ###
 .vscode/
 .env
+gcs-key.json
