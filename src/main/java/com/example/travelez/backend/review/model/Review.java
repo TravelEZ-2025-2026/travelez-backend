@@ -1,19 +1,16 @@
 package com.example.travelez.backend.review.model;
 
-import java.util.List;
-
 import com.example.travelez.backend.common.model.AuditableEntity;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.review.model.enums.ReviewStatus;
-
+import com.example.travelez.backend.users.model.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
+
+import java.util.List;
 
 @Entity
 @Table(name = "review")
@@ -21,6 +18,7 @@ import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Review extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,7 +51,11 @@ public class Review extends AuditableEntity {
     @JoinColumn(name = "place_of_interest_id")
     private Poi poi;
 
-    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.LAZY)
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @JoinTable(name = "media_review", joinColumns = @JoinColumn(name = "review_id"), inverseJoinColumns = @JoinColumn(name = "media_id"))
     private List<Media> medias;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "traveler_id")
+    private User traveler;
 }

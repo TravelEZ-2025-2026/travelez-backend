@@ -8,12 +8,10 @@ import com.example.travelez.backend.common.dto.PaginationRequest;
 import com.example.travelez.backend.common.utils.PaginationUtils;
 import com.example.travelez.backend.poi.dto.response.PlaceBaseResponse;
 import com.example.travelez.backend.poi.service.PlaceService;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/place")
+@RequestMapping("/api/places")
 @RequiredArgsConstructor
 @Tag(name = "Place", description = "Place endpoints")
 public class PlaceController {
