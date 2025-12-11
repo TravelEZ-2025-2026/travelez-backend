@@ -6,6 +6,7 @@ CREATE TYPE media_type_enum AS ENUM ('IMAGE', 'VIDEO');
 CREATE TYPE poi_type_enum AS ENUM ('ATTRACTION', 'NATURE', 'RELIGIOUS', 'NIGHTLIFE', 'SHOPPING', 'CAFE_DESSERT', 'STREET_FOOD', 'RESTAURANT', 'OTHER');
 CREATE TYPE poi_status_enum AS ENUM ('ACTIVE', 'BANNED');
 CREATE TYPE review_status_enum AS ENUM ('ACTIVE', 'BANNED');
+CREATE TYPE auth_provider AS ENUM ('LOCAL', 'GOOGLE');
 
 -- TABLES
 CREATE TABLE users (
@@ -23,14 +24,14 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ
 );
 CREATE TABLE admin (
-    id BIGSERIAL PRIMARY KEY REFERENCES users(id)
+    id BIGSERIAL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE
 
 );
 CREATE TABLE traveler (
-    id BIGSERIAL PRIMARY KEY REFERENCES users(id)
+    id BIGSERIAL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE provider (
-    id BIGSERIAL PRIMARY KEY REFERENCES users(id),
+    id BIGSERIAL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     phone_number VARCHAR(10) UNIQUE,
     address TEXT,
     business_name VARCHAR(100)
@@ -121,3 +122,22 @@ CREATE TABLE media_poi (
     media_id BIGINT REFERENCES media(id) ON DELETE CASCADE,
     PRIMARY KEY (place_of_interest_id, media_id)
 );
+
+ALTER TABLE users ADD COLUMN provider auth_provider DEFAULT 'LOCAL';
+ALTER TABLE users ADD COLUMN google_id VARCHAR(255) UNIQUE;
+
+CREATE TABLE user_oauth_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) DEFAULT 'GOOGLE',
+    access_token TEXT,
+    refresh_token TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ
+);
+
+ALTER TABLE admin ADD CONSTRAINT fk_admin_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE traveler ADD CONSTRAINT fk_traveler_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE provider ADD CONSTRAINT fk_provider_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE media ADD COLUMN cloud_name TEXT;

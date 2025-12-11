@@ -2,6 +2,10 @@ package com.example.travelez.backend.users.model;
 
 import java.time.LocalDateTime;
 
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
+
 import com.example.travelez.backend.common.model.AuditableEntity;
 
 import jakarta.persistence.*;
@@ -9,11 +13,13 @@ import lombok.*;
 
 @Entity
 @Table(name = "users")
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "role", discriminatorType = DiscriminatorType.STRING)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class User extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,12 +49,25 @@ public class User extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "avatar")
+    @Column(name = "avatar", columnDefinition = "TEXT")
     private String avatar;
 
-    @Column(name = "role", nullable = false)
+    @Column(name = "role", nullable = false, updatable = false, insertable = false)
     @Enumerated(EnumType.STRING)
     private RoleType role;
+
+    @Column(name = "google_id")
+    private String googleId;
+
+    @Column(name = "provider")
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    private AuthProvider provider;
+
+    public enum AuthProvider {
+        GOOGLE,
+        LOCAL
+    }
 
     public enum GenderType {
         MALE,

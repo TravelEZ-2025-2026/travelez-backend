@@ -1,12 +1,11 @@
 package com.example.travelez.backend.users.service.impl;
 
 import com.example.travelez.backend.common.api.ResultCode;
-import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.security.util.JwtUtil;
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
 import com.example.travelez.backend.users.dto.response.UserLoginResponse;
-import com.example.travelez.backend.users.mapper.UserMapper;
+import com.example.travelez.backend.users.factory.UserFactory;
 import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.repository.UserRepository;
 
@@ -16,7 +15,6 @@ import com.example.travelez.backend.users.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,13 +26,13 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    private final UserMapper userMapper;
-
     private final PasswordEncoder passwordEncoder;
 
     private final AuthenticationManager authenticationManager;
 
     private final JwtUtil jwtUtil;
+
+    private final UserFactory userFactory;
 
     @Override
     public User register(UserRegisterRequest request) {
@@ -46,7 +44,7 @@ public class UserServiceImpl implements UserService {
         if (existingUser.isPresent()) {
             Asserts.fail("Username already exists");
         }
-        User user = userMapper.toUser(request);
+        User user = userFactory.create(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
         return user;
