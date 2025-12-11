@@ -20,6 +20,9 @@ google:
   client-id: ${GOOGLE_CLIENT_ID}
   client-secret: ${GOOGLE_CLIENT_SECRET}
   redirect-uri: ${GOOGLE_REDIRECT_URI}
+  recaptcha:
+    secret: ${RECAPTCHA_SECRET}
+    verify-url: https://www.google.com/recaptcha/api/siteverify
 
 gcp:
   bucket:
@@ -30,7 +33,7 @@ gcp:
 #JWT config
 jwt:
   tokenHeader: Authorization
-  secret: bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb25UaGF0SXNBdExlYXN0MjU2Qml0c0xvbmcxMjM0NTY3OA==
+  secret: ${SECRET_JWT}
   expiration: 604800 #(60*60*24*7)
   tokenHead: 'Bearer '
 

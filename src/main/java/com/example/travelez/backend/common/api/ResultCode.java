@@ -15,6 +15,7 @@ public enum ResultCode implements IErrorCode {
     NOT_FOUND(HttpServletResponse.SC_NOT_FOUND, "Resource not found."),
     VALIDATION_FAILED(HttpServletResponse.SC_BAD_REQUEST, "Validation failed."),
     INTERNAL_SERVER_ERROR(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error."),
+    CAPTCHA_INVALID(HttpServletResponse.SC_BAD_REQUEST, "Captcha verification failed."),
     ;
 
     private final int code;

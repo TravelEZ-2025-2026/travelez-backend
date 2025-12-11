@@ -12,4 +12,7 @@ public class UserLoginRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
+    //    @NotBlank(message = "Recaptcha token is required")
+    private String recaptchaToken;
+
 }
