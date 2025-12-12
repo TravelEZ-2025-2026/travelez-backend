@@ -1,12 +1,11 @@
 package com.example.travelez.backend.ai.service.impl;
 
 import com.example.travelez.backend.ai.prompt.ItineraryPromptBuilder;
-import com.example.travelez.backend.ai.service.TravelEzAiService;
+import com.example.travelez.backend.ai.service.AiService;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
-import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.infrastructure.gemini.GeminiService;
-import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
@@ -16,16 +15,16 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class TravelEzAiServiceImpl implements TravelEzAiService {
+public class AiServiceImpl implements AiService {
     private final GeminiService geminiService;
     private final ItineraryPromptBuilder itineraryPromptBuilder;
     private final Gson gson;
 
     @Override
-    public ItineraryResponse generateItinerary(CreateItineraryRequest request, String poiContextJson) {
+    public ItineraryResponse generateItinerary(ItineraryCreationRequest request, String poiContextJson) {
         String prompt = itineraryPromptBuilder.buildPrompt(request, poiContextJson);
 
-        String jsonResult = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
+        String jsonResult = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
 
         try {
             String cleanJson = jsonResult.replaceAll("\\s*[\\(\\[](?i)(?:ID\\s*)?\\d+[\\)\\]]", "");

@@ -2,7 +2,7 @@ package com.example.travelez.backend.ai.prompt;
 
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
-import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 public class ItineraryPromptBuilder {
     private static final String PROMPT_TEMPLATE_PATH = "prompts/itinerary_prompt.txt";
 
-    public String buildPrompt(CreateItineraryRequest req, String poiContext) {
+    public String buildPrompt(ItineraryCreationRequest req, String poiContext) {
         try {
             String template = loadPromptTemplate();
 

@@ -1,14 +1,13 @@
 package com.example.travelez.backend.itinerary.service.impl;
 
-import com.example.travelez.backend.ai.service.TravelEzAiService;
+import com.example.travelez.backend.ai.service.AiService;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
-import com.example.travelez.backend.infrastructure.gemini.GeminiService;
-import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
-import com.example.travelez.backend.itinerary.dto.request.SaveItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
 import com.example.travelez.backend.itinerary.dto.response.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.DayPlan;
-import com.example.travelez.backend.itinerary.dto.response.GetItineraryResponse;
+import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
 import com.example.travelez.backend.itinerary.model.Itinerary;
@@ -46,11 +45,11 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final ItineraryMapper itineraryMapper;
 
     private final Gson gson = new Gson();
-    private final TravelEzAiService travelEzAiService;
+    private final AiService aiService;
 
     @Override
     @Transactional(readOnly = true)
-    public ItineraryResponse generateSmartItinerary(CreateItineraryRequest request) {
+    public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request) {
         List<Poi> contextPois = new ArrayList<>();
         if (request.getDestinationCities() != null) {
             for (String city : request.getDestinationCities()) {
@@ -61,7 +60,7 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         String poiContextJson = serializePois(contextPois);
 
-        ItineraryResponse response = travelEzAiService.generateItinerary(request, poiContextJson);
+        ItineraryResponse response = aiService.generateItinerary(request, poiContextJson);
 
         enrichItineraryDetails(response);
 
@@ -72,21 +71,16 @@ public class ItineraryServiceImpl implements ItineraryService {
 
     @Override
     @Transactional
-    public Long saveItinerary(SaveItineraryRequest request) {
-
+    public Long saveItinerary(ItinerarySaveRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ApiException(ResultCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
-        }
-
         UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
+
         User traveler = userRepository.findById(userPrinciple.getUserId())
-                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy thông tin người dùng" ));
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "User information not found" ));
 
         ItineraryResponse aiData = request.getAiResult();
         if (aiData == null) {
-            throw new ApiException(ResultCode.VALIDATION_FAILED, "Dữ liệu lộ trình từ AI không được để trống");
+            throw new ApiException(ResultCode.VALIDATION_FAILED, "AI itinerary data cannot be empty");
         }
 
         Itinerary itinerary = itineraryMapper.createItineraryEntity(
@@ -96,6 +90,21 @@ public class ItineraryServiceImpl implements ItineraryService {
         );
         Itinerary savedItinerary = itineraryRepository.save(itinerary);
 
+        Set<Long> poiIds = new HashSet<>();
+        if (request.getAiResult().getDays() != null) {
+            request.getAiResult().getDays().stream()
+                    .filter(day -> day.getActivities() != null)
+                    .flatMap(day -> day.getActivities().stream())
+                    .filter(act -> act.getId() > 0)
+                    .forEach(act -> poiIds.add(act.getId()));
+        }
+
+        Map<Long, Poi> poiMap = new HashMap<>();
+        if (!poiIds.isEmpty()) {
+            poiMap = poiRepository.findAllById(poiIds).stream()
+                    .collect(Collectors.toMap(Poi::getId, p -> p));
+        }
+
         List<ItineraryActivity> activities = new ArrayList<>();
         if (request.getAiResult().getDays() != null) {
             for (DayPlan day : request.getAiResult().getDays()) {
@@ -103,10 +112,8 @@ public class ItineraryServiceImpl implements ItineraryService {
 
                 if (day.getActivities() != null) {
                     for (ActivityDTO dto : day.getActivities()) {
-                        Poi linkedPoi = null;
-                        if (dto.getId() > 0) {
-                            linkedPoi = poiRepository.findById(dto.getId()).orElse(null);
-                        }
+                        Poi linkedPoi = poiMap.get(dto.getId());
+
                         activities.add(itineraryMapper.createActivityEntity(
                                 dto, savedItinerary, currentDate, linkedPoi
                         ));
@@ -114,30 +121,32 @@ public class ItineraryServiceImpl implements ItineraryService {
                 }
             }
         }
+
         itineraryActivityRepository.saveAll(activities);
         return savedItinerary.getId();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public GetItineraryResponse getItineraryDetail(Long itineraryId) {
+    public ItineraryDetailResponse getItineraryDetail(Long itineraryId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ApiException(ResultCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
-        }
         UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
 
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy lộ trình"));
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
 
         if (itinerary.getTraveler().getId() != currentUser.getUserId()) {
-            throw new ApiException(ResultCode.FORBIDDEN, "Bạn không có quyền truy cập vào lộ trình này");
+            throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to access this itinerary");
         }
 
         List<ItineraryActivity> dbActivities = itineraryActivityRepository
                 .findByItineraryIdOrderByItineraryDateAscStartTimeAsc(itineraryId);
 
-        return itineraryMapper.toGetItineraryResponse(itinerary, dbActivities);
+        ItineraryDetailResponse response = itineraryMapper.toDetailResponseHeader(itinerary);
+        List<DayPlan> dayPlans = groupActivitiesByDate(dbActivities);
+        response.setDays(dayPlans);
+
+        return response;
     }
 
     // --- HELPER METHODS ---
@@ -155,6 +164,32 @@ public class ItineraryServiceImpl implements ItineraryService {
                 p.getOpeningHour()
         )).collect(Collectors.toList());
         return gson.toJson(simpleList);
+    }
+
+    private List<DayPlan> groupActivitiesByDate(List<ItineraryActivity> dbActivities) {
+        if (dbActivities == null || dbActivities.isEmpty()) return new ArrayList<>();
+
+        Map<LocalDate, List<ItineraryActivity>> grouped = dbActivities.stream()
+                .collect(Collectors.groupingBy(
+                        ItineraryActivity::getItineraryDate,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        List<DayPlan> days = new ArrayList<>();
+        int dayIndex = 1;
+        for (Map.Entry<LocalDate, List<ItineraryActivity>> entry : grouped.entrySet()) {
+            List<ActivityDTO> activityDTOs = entry.getValue().stream()
+                    .map(itineraryMapper::toActivityDTO)
+                    .collect(Collectors.toList());
+
+            DayPlan dayPlan = new DayPlan();
+            dayPlan.setDayIndex(dayIndex++);
+            dayPlan.setDate(entry.getKey().toString());
+            dayPlan.setActivities(activityDTOs);
+            days.add(dayPlan);
+        }
+        return days;
     }
 
     private void enrichItineraryDetails(ItineraryResponse response) {
@@ -181,10 +216,26 @@ public class ItineraryServiceImpl implements ItineraryService {
         for (DayPlan day : response.getDays()) {
             if (day.getActivities() != null) {
                 for (ActivityDTO act : day.getActivities()) {
-                    // Lấy POI từ Map
                     Poi realPoi = poiMap.get(act.getId());
-
-                    itineraryMapper.enrichActivityWithPoi(act, realPoi);
+                    if (realPoi != null) {
+                        act.setTitle(realPoi.getName());
+                        act.setAddress(realPoi.getAddress());
+                        act.setLat(realPoi.getLatitude());
+                        act.setLng(realPoi.getLongitude());
+                        act.setPrice("0");
+                        if (realPoi.getMedias() != null && !realPoi.getMedias().isEmpty()) {
+                            act.setImage(realPoi.getMedias().get(0).getUrl());
+                        } else {
+                            act.setImage(null);
+                        }
+                    } else {
+                        if (act.getTitle() == null) act.setTitle("Hoạt động tự do");
+                        act.setAddress("N/A");
+                        act.setImage(null);
+                        act.setLat(0.0);
+                        act.setLng(0.0);
+                        act.setPrice("0");
+                    }
                 }
             }
         }

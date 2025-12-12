@@ -80,7 +80,7 @@ public class PoiServiceImpl implements PoiService {
         );
 
         if (pois.isEmpty()) {
-            Asserts.fail(ResultCode.NOT_FOUND, "Chưa có dữ liệu địa điểm cho " + place.getName());
+            Asserts.fail(ResultCode.NOT_FOUND, "No location data available for: " + place.getName());
         }
 
         return pois;

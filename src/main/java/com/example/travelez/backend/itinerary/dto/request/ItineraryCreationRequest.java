@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Data
-public class CreateItineraryRequest {
+public class ItineraryCreationRequest {
     private List<String> destinationCities; // VD: ["thanh_pho_ho_chi_minh"]
     private BigDecimal budget;
     private LocalDate startDate;    // VD: 2025-11-11

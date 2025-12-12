@@ -2,9 +2,9 @@ package com.example.travelez.backend.itinerary.controller;
 
 import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.ResultCode;
-import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
-import com.example.travelez.backend.itinerary.dto.request.SaveItineraryRequest;
-import com.example.travelez.backend.itinerary.dto.response.GetItineraryResponse;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
+import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.service.impl.ItineraryServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper; // Import thêm cái này
@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/itinerary")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ItineraryController {
 
     private final ItineraryServiceImpl itineraryService;
@@ -24,25 +23,25 @@ public class ItineraryController {
 
     @PostMapping("/generate")
     public ResponseEntity<BaseResponse<ItineraryResponse>> generateItinerary(
-            @RequestBody CreateItineraryRequest request) {
+            @RequestBody ItineraryCreationRequest request) {
 
         // Gọi Service xử lý logic
         ItineraryResponse response = itineraryService.generateSmartItinerary(request);
 
-        return BaseResponse.success(response, ResultCode.SUCCESS, "Tạo lộ trình thành công");
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Itinerary created successfully");
     }
 
     @PostMapping("/save")
-    public ResponseEntity<BaseResponse<Long>> saveItinerary(@RequestBody SaveItineraryRequest request) {
+    public ResponseEntity<BaseResponse<Long>> saveItinerary(@RequestBody ItinerarySaveRequest request) {
 
         Long itineraryId = itineraryService.saveItinerary(request);
 
-        return BaseResponse.success(itineraryId, ResultCode.SUCCESS, "Lưu lộ trình thành công");
+        return BaseResponse.success(itineraryId, ResultCode.SUCCESS, "Itinerary saved successfully");
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponse<GetItineraryResponse>> getItineraryDetail(@PathVariable Long id) {
-        GetItineraryResponse response = itineraryService.getItineraryDetail(id);
-        return BaseResponse.success(response, ResultCode.SUCCESS, "Lấy chi tiết lộ trình thành công");
+    public ResponseEntity<BaseResponse<ItineraryDetailResponse>> getItineraryDetail(@PathVariable Long id) {
+        ItineraryDetailResponse response = itineraryService.getItineraryDetail(id);
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Itinerary details retrieved successfully");
     }
 }

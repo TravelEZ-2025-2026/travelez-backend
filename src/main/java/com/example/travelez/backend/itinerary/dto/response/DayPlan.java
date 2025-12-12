@@ -8,6 +8,5 @@ import java.util.List;
 public class DayPlan {
     private int dayIndex;
     private String date;
-    private String theme;
     private List<ActivityDTO> activities;
 }

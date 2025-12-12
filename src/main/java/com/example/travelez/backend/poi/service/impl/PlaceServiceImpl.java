@@ -49,7 +49,7 @@ public class PlaceServiceImpl implements PlaceService {
     public Place getPlaceByCodename(String codeName) {
         return placeRepository.findByCodename(codeName)
                 .orElseThrow(() -> new ApiException(
-                        ResultCode.NOT_FOUND, "Không tìm thấy thành phố: " + codeName
+                        ResultCode.NOT_FOUND, "City not found: " + codeName
                 ));
     }
 }

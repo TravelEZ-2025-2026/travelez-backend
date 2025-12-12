@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class GetItineraryResponse extends ItineraryResponse {
+public class ItineraryDetailResponse extends ItineraryResponse {
     private Boolean hasKids;
     private Boolean hasPets;
     private String companion;
