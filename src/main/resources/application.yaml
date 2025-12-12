@@ -33,7 +33,7 @@ gcp:
 #JWT config
 jwt:
   tokenHeader: Authorization
-  secret: ${JWT_SECRET}
+  secret: ${SECRET_JWT}
   expiration: ${JWT_EXPIRATION}
   tokenHead: 'Bearer '
 

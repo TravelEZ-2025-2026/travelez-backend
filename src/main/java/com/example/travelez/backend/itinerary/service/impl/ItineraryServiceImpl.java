@@ -1,13 +1,16 @@
 package com.example.travelez.backend.itinerary.service.impl;
 
+import com.example.travelez.backend.ai.service.TravelEzAiService;
+import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
-import com.example.travelez.backend.common.exception.Asserts;
-import com.example.travelez.backend.common.exception.ErrorCode;
-import com.example.travelez.backend.common.service.GeminiService;
+import com.example.travelez.backend.infrastructure.gemini.GeminiService;
 import com.example.travelez.backend.itinerary.dto.request.CreateItineraryRequest;
 import com.example.travelez.backend.itinerary.dto.request.SaveItineraryRequest;
+import com.example.travelez.backend.itinerary.dto.response.ActivityDTO;
+import com.example.travelez.backend.itinerary.dto.response.DayPlan;
 import com.example.travelez.backend.itinerary.dto.response.GetItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
+import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
 import com.example.travelez.backend.itinerary.repository.ItineraryActivityRepository;
@@ -26,9 +29,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,19 +37,19 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ItineraryServiceImpl implements ItineraryService {
-    private final GeminiService geminiService;
     private final PoiService poiService;
-    private final Gson gson = new Gson();
-
     private final UserRepository userRepository;
     private final ItineraryRepository itineraryRepository;
     private final ItineraryActivityRepository itineraryActivityRepository;
     private final PoiRepository poiRepository;
+    private final ItineraryMapper itineraryMapper;
+
+    private final Gson gson = new Gson();
+    private final TravelEzAiService travelEzAiService;
 
     @Override
     @Transactional(readOnly = true)
     public ItineraryResponse generateSmartItinerary(CreateItineraryRequest request) {
-        // 1. Lấy dữ liệu Context (Real Data)
         List<Poi> contextPois = new ArrayList<>();
         if (request.getDestinationCities() != null) {
             for (String city : request.getDestinationCities()) {
@@ -57,119 +58,58 @@ public class ItineraryServiceImpl implements ItineraryService {
         }
         log.info("Generating itinerary with context of {} POIs", contextPois.size());
 
-        // 2. Serialize POI để nạp vào Prompt (Rút gọn để tiết kiệm token)
         String poiContextJson = serializePois(contextPois);
 
-        // 3. Build Prompt (Hybrid Structured)
-        String prompt = buildPrompt(request, poiContextJson);
+        ItineraryResponse response = travelEzAiService.generateItinerary(request, poiContextJson);
 
-        // 4. Gọi AI (Model Flash)
-        String jsonResult = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
+        enrichItineraryDetails(response);
 
-        // BƯỚC 5: HẬU XỬ LÝ & PARSE (Post-processing)
-        try {
-            String cleanJson = jsonResult.replaceAll("\\s*[\\(\\[](?i)(?:ID\\s*)?\\d+[\\)\\]]", "");
-            ItineraryResponse response = gson.fromJson(cleanJson, ItineraryResponse.class);
+        response.setDestinationCities(request.getDestinationCities());
 
-            enrichItineraryDetails(response);
-
-            response.setDestinationCities(request.getDestinationCities());
-
-            return response;
-
-        } catch (Exception e) {
-            log.error("Failed to parse AI Response: {}", jsonResult);
-            Asserts.fail(ErrorCode.AI_RESPONSE_FORMAT_ERROR);
-            return null;
-        }
+        return response;
     }
 
     @Override
     @Transactional
     public Long saveItinerary(SaveItineraryRequest request) {
 
-        // 1. LẤY USER TỪ SECURITY CONTEXT (Chuẩn Spring Security)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ApiException(ErrorCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
+            throw new ApiException(ResultCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
         }
 
         String currentUsername = authentication.getName();
-
-        // 2. TÌM ENTITY USER TRONG DB
         User traveler = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thông tin người dùng: " + currentUsername));
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy thông tin người dùng: " + currentUsername));
 
         ItineraryResponse aiData = request.getAiResult();
         if (aiData == null) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "Dữ liệu lộ trình từ AI không được để trống");
+            throw new ApiException(ResultCode.VALIDATION_FAILED, "Dữ liệu lộ trình từ AI không được để trống");
         }
 
-        CreateItineraryRequest meta = request.getCreateRequest();
-
-        // 3. TẠO ITINERARY HEADER
-        Itinerary itinerary = Itinerary.builder()
-                .traveler(traveler)
-                .title(aiData.getTripTitle())
-                .destinationCities(meta.getDestinationCities())
-                .styles(meta.getStyles())
-                .startDate(meta.getStartDate())
-                .endDate(meta.getEndDate())
-                .budget(meta.getBudget())
-                .hasKids(meta.getHasKids())
-                .hasPets(meta.getHasPets())
-                .companion(meta.getCompanion())
-                .userNotes(meta.getSpecialNotes())
-                .objectives(aiData.getReasoningSummary())
-                .status(Itinerary.ItineraryStatus.PLANNING)
-                .build();
-
+        Itinerary itinerary = itineraryMapper.createItineraryEntity(
+                request.getCreateRequest(),
+                request.getAiResult(),
+                traveler
+        );
         Itinerary savedItinerary = itineraryRepository.save(itinerary);
 
-        // 4. TẠO ACTIVITIES
         List<ItineraryActivity> activities = new ArrayList<>();
-
-        if (aiData.getDays() != null) {
-            for (ItineraryResponse.DayPlan day : aiData.getDays()) {
+        if (request.getAiResult().getDays() != null) {
+            for (DayPlan day : request.getAiResult().getDays()) {
                 LocalDate currentDate = LocalDate.parse(day.getDate());
 
-                for (ItineraryResponse.Activity aiActivity : day.getActivities()) {
-
-                    LocalTime startTime = parseTime(aiActivity.getStartTime());
-                    LocalTime endTime = parseTime(aiActivity.getEndTime());
-
-                    BigDecimal cost = BigDecimal.ZERO;
-
-                    try {
-                        if (aiActivity.getPrice() != null && !aiActivity.getPrice().equalsIgnoreCase("Free")) {
-                            // Xóa bỏ chữ cái nếu có (VD: "50k" -> "50")
-                            String cleanPrice = aiActivity.getPrice().replaceAll("[^0-9.]", "");
-                            cost = new BigDecimal(cleanPrice);
+                if (day.getActivities() != null) {
+                    for (ActivityDTO dto : day.getActivities()) {
+                        Poi linkedPoi = null;
+                        if (dto.getId() > 0) {
+                            linkedPoi = poiRepository.findById(dto.getId()).orElse(null);
                         }
-                    } catch (Exception e) { cost = BigDecimal.ZERO; }
-
-                    Poi linkedPoi = null;
-                    // Chỉ tìm nếu ID hợp lệ (> 0)
-                    if (aiActivity.getId() > 0) {
-                        linkedPoi = poiRepository.findById(aiActivity.getId())
-                                .orElse(null);
+                        activities.add(itineraryMapper.createActivityEntity(
+                                dto, savedItinerary, currentDate, linkedPoi
+                        ));
                     }
-
-                    ItineraryActivity activity = ItineraryActivity.builder()
-                            .itinerary(savedItinerary)
-                            .itineraryDate(currentDate)
-                            .startTime(startTime)
-                            .endTime(endTime)
-                            .timeOfDay(calculateTimeOfDay(startTime))
-                            .type(aiActivity.getActivityType())
-                            .description(aiActivity.getActivityName())
-                            .note(aiActivity.getAiTip())
-                            .activityCost(cost)
-                            .poi(linkedPoi)
-                            .build();
-
-                    activities.add(activity);
                 }
             }
         }
@@ -180,102 +120,17 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Override
     @Transactional(readOnly = true)
     public GetItineraryResponse getItineraryDetail(Long itineraryId) {
-        // 1. Tìm Itinerary cha
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy lộ trình"));
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy lộ trình"));
 
-        // 2. Query Activities (Đảm bảo đã Join Fetch POI trong Repository để tránh lỗi N+1 query)
         List<ItineraryActivity> dbActivities = itineraryActivityRepository
                 .findByItineraryIdOrderByItineraryDateAscStartTimeAsc(itineraryId);
 
-        // 3. Tái tạo cấu trúc JSON
-        List<ItineraryResponse.DayPlan> days = new ArrayList<>();
-
-        if (!dbActivities.isEmpty()) {
-            // Group theo ngày
-            Map<LocalDate, List<ItineraryActivity>> grouped = dbActivities.stream()
-                    .collect(Collectors.groupingBy(
-                            ItineraryActivity::getItineraryDate,
-                            LinkedHashMap::new,
-                            Collectors.toList()
-                    ));
-
-            int dayIndex = 1;
-            for (Map.Entry<LocalDate, List<ItineraryActivity>> entry : grouped.entrySet()) {
-                List<ItineraryResponse.Activity> activityDTOs = new ArrayList<>();
-
-                for (ItineraryActivity act : entry.getValue()) {
-                    ItineraryResponse.Activity dto = new ItineraryResponse.Activity();
-
-                    // B. Xử lý Tên Hoạt động (Lấy từ phần đầu của description)
-                    // Format lúc save: "Tên Hoạt Động|||Tên Địa Điểm"
-                    String rawDesc = act.getDescription() != null ? act.getDescription() : "";
-                    String[] parts = rawDesc.split("\\|\\|\\|");
-                    dto.setActivityName(parts[0]); // Phần 1 là tên hoạt động (VD: "Tham quan Dinh Độc Lập")
-
-                    // C. Xử lý Địa điểm (QUAN TRỌNG: Ưu tiên POI thật)
-                    if (act.getPoi() != null) {
-                        // Có liên kết POI -> Lấy ID và Name chuẩn từ bảng poi
-                        dto.setId(act.getPoi().getId());
-                        dto.setTitle(act.getPoi().getName());
-                        dto.setAddress(act.getPoi().getAddress());
-                        dto.setLat(act.getPoi().getLatitude());
-                        dto.setLng(act.getPoi().getLongitude());
-                        dto.setActivityName(act.getDescription());
-
-                        if (act.getPoi().getMedias() != null && !act.getPoi().getMedias().isEmpty()) {
-                            dto.setImage(act.getPoi().getMedias().get(0).getUrl());
-                        } else {
-                            dto.setImage(null);
-                        }
-                    } else {
-                        // Không có POI (Địa điểm ảo/Custom)
-                        dto.setId(0L);
-                        dto.setTitle("Hiện tại chưa có tên địa điểm trong csdl");
-                        dto.setActivityName("Hoạt động tự do");
-                        dto.setAddress("N/A");
-                        dto.setLat(0.0);
-                        dto.setLng(0.0);
-                        dto.setImage(null);
-                    }
-
-                    dto.setActivityType(act.getType());
-                    dto.setAiTip(act.getNote());
-                    dto.setStartTime(formatTime(act.getStartTime()));
-                    dto.setEndTime(formatTime(act.getEndTime()));
-                    dto.setPrice(act.getActivityCost() != null ? act.getActivityCost().toString() : "0");
-
-                    activityDTOs.add(dto);
-                }
-
-                ItineraryResponse.DayPlan dayPlan = new ItineraryResponse.DayPlan();
-                dayPlan.setDayIndex(dayIndex++);
-                dayPlan.setDate(entry.getKey().toString());
-                dayPlan.setTheme("Ngày " + (dayIndex - 1));
-                dayPlan.setActivities(activityDTOs);
-
-                days.add(dayPlan);
-            }
-        }
-
-        GetItineraryResponse response = new GetItineraryResponse();
-        response.setTripTitle(itinerary.getTitle());
-        response.setDestinationCities(itinerary.getDestinationCities());
-        response.setReasoningSummary(itinerary.getObjectives());
-
-        response.setStyles(itinerary.getStyles());
-        response.setSpecialNotes(itinerary.getUserNotes());
-        response.setHasKids(itinerary.getHasKids());
-        response.setHasPets(itinerary.getHasPets());
-        response.setCompanion(itinerary.getCompanion());
-        response.setDays(days);
-
-        return response;
+        return itineraryMapper.toGetItineraryResponse(itinerary, dbActivities);
     }
 
     // --- HELPER METHODS ---
 
-    // DTO nội bộ để rút gọn dữ liệu gửi cho AI
     private record SimplePoi(long id, String name, String type, String address, Double lat, Double lng, Object hours) {}
 
     private String serializePois(List<Poi> pois) {
@@ -291,126 +146,13 @@ public class ItineraryServiceImpl implements ItineraryService {
         return gson.toJson(simpleList);
     }
 
-    private String buildPrompt(CreateItineraryRequest req, String poiContext) {
-        StringBuilder companionInfo = new StringBuilder(req.getCompanion() != null ? req.getCompanion() : "Solo");
-        if (Boolean.TRUE.equals(req.getHasKids())) {
-            companionInfo.append(" (Có trẻ em đi cùng - Cần an toàn)");
-        }
-        if (Boolean.TRUE.equals(req.getHasPets())) {
-            companionInfo.append(" (Có mang theo thú cưng - Cần không gian mở)");
-        }
-
-        String destinations = req.getDestinationCities() != null ? String.join(", ", req.getDestinationCities()) : "";
-        return """
-            ### 1. VAI TRÒ & LUẬT CẤM (ROLE & CONSTRAINTS)
-            Bạn là TravelEZ Expert - một hướng dẫn viên du lịch địa phương cực kỳ am hiểu, nhiệt tình và tâm lý.
-            Nhiệm vụ: Thiết kế lịch trình du lịch tối ưu, truyền cảm hứng nhưng đảm bảo sức khỏe cho du khách (Khoa học hành vi).
-            
-            LUẬT CẤM & RÀNG BUỘC (CRITICAL RULES):
-            1. TRUNG THỰC: Chỉ được chọn địa điểm có trong [POI CONTEXT]. KHÔNG Hallucination (bịa ID).
-            2. LOGIC CƠ BẢN: Không xếp lịch vào giờ địa điểm đóng cửa.
-            3. FORMAT VĂN BẢN: Tuyệt đối KHÔNG viết ID (ví dụ: '(ID 123)') vào trong nội dung văn bản.
-            4. VĂN PHONG (Tone of Voice):
-                + Nhiệt tình, thân thiện, khơi gợi cảm hứng khám phá.
-                + Cụ thể hóa hành động (Action-oriented): Thay vì nói "Tham quan chợ", hãy nói "Thử trả giá khi mua quà lưu niệm và nếm thử chè Sài Gòn".
-                + Tuyệt đối KHÔNG giải thích các vấn đề kỹ thuật (như "Do thiếu dữ liệu...", "Vì thuật toán...").
-                + Tập trung vào GIÁ TRỊ TRẢI NGHIỆM của khách.
-            
-            5. QUẢN LÝ NĂNG LƯỢNG & NHỊP ĐỘ (ENERGY BALANCING):
-                + Tự động phân loại ngầm: Các điểm `NATURE`, `ATTRACTION` (leo trèo, đi bộ) là **HIGH ENERGY** (Tốn sức). Các điểm `CAFE`, `FOOD`, `SHOPPING` là **LOW ENERGY** (Phục hồi).
-                + Nguyên tắc Xen kẽ (Interleaving): KHÔNG xếp 2 địa điểm Tốn sức (High) đi liền nhau. Hãy chèn 1 điểm Phục hồi (Low) vào giữa.
-                + Quy tắc "Dead Rest" (Tránh nắng): Khung giờ 12:00 - 14:00 BẮT BUỘC phải là hoạt động trong nhà, ăn uống hoặc nghỉ ngơi. Tuyệt đối không xếp hoạt động ngoài trời giờ này.
-            
-            6. RÀNG BUỘC ĐỐI TƯỢNG (COMPANION CONSTRAINTS):
-                + Nếu có **Trẻ em**: TUYỆT ĐỐI KHÔNG xếp lịch đi Bar/Pub/Nightlife/Khu đèn đỏ.
-                + Nếu có **Thú cưng**: BẮT BUỘC chọn địa điểm không gian mở, pet-friendly. TRÁNH bảo tàng/di tích nghiêm ngặt.
-            
-            ### 2. NGỮ CẢNH (CONTEXT)
-            [POI CONTEXT]:
-            %s
-            
-            [USER REQUEST]:
-            - Điểm đến: %s
-            - Thời gian: %s đến %s
-            - Ngân sách: %s
-            - Phong cách: %s
-            - Đồng hành: %s
-            - Ghi chú: %s
-            
-            ### 3. TÁC VỤ (TASK - HYBRID STRUCTURED)
-            Bước 1: Suy nghĩ ngầm (Think silently).
-            - Phân loại năng lượng (High/Low) cho các địa điểm.
-            - Tìm kiếm trong Context một Khách sạn/Homestay tốt nhất để làm "Base" (Căn cứ).
-            - Sắp xếp theo mô hình "Sóng hồi phục": Mệt -> Nghỉ -> Mệt -> Nghỉ.
-            - Tính toán khoảng cách di chuyển để gom cụm địa lý quanh điểm lưu trú đã chọn.
-            
-            Bước 2: Xuất dữ liệu JSON.
-            - Trả về kết quả khớp chính xác với cấu trúc JSON sau:
-            {
-              "tripTitle": "Tên chuyến đi thật kêu và hấp dẫn (Tiếng Việt)",
-              "reasoningSummary": "Đoạn văn ngắn (3-4 câu) giải thích tại sao lịch trình này lại phù hợp với người dùng như là về phong cách, điều kiện, sở thích,....",
-              "days": [
-                {
-                  "dayIndex": 1,
-                  "date": "YYYY-MM-DD",
-                  "theme": "Chủ đề trải nghiệm trong ngày",
-                  "activities": [
-                    { 
-                        "id": <ID_INTEGER_FROM_CONTEXT>, // Bắt buộc phải có và KHỚP với ID trong [POI CONTEXT], nếu không có thì để 0
-                        "startTime": "HH:MM", // Giờ bắt đầu
-                        "endTime": "HH:MM",   // Giờ kết thúc (Bạn tự ước lượng thời gian chơi hợp lý)
-                        "locationName": "Tên địa điểm (Lấy chính xác từ Context)", 
-                        "activityName": "Tên hoạt động", 
-                        "activityType": "...", 
-                        "aiTip": "Lời khuyên thực tế và sinh động (2-3 câu). Gợi ý cụ thể: Nên chụp ảnh góc nào? Món nào 'must-try'? Nên đi đứng/ăn mặc ra sao? (Viết tự nhiên, không chứa ID)" 
-                    }
-                  ]
-                }
-              ]
-            }
-            """.formatted(
-                poiContext,
-                destinations,
-                req.getStartDate(), req.getEndDate(),
-                req.getBudget(),
-                req.getStyles(),
-                companionInfo.toString(),
-                req.getSpecialNotes()
-        );
-    }
-
-    private LocalTime parseTime(String timeString) {
-        try {
-            if (timeString == null) return null;
-            // Phòng hờ AI vẫn trả về "09:00 - 10:00", ta chỉ lấy phần trước dấu gạch
-            String cleanTime = timeString.split("-")[0].trim();
-            return LocalTime.parse(cleanTime); // Format HH:mm
-        } catch (Exception e) {
-            return null; // Hoặc LocalTime.of(8, 0) làm default
-        }
-    }
-
-    private String formatTime(LocalTime time) {
-        if (time == null) return null;
-        return time.toString(); // Returns format HH:mm:ss
-    }
-
-    private String calculateTimeOfDay(LocalTime time) {
-        if (time == null) return "ANYTIME";
-        int hour = time.getHour();
-        if (hour >= 5 && hour < 12) return "MORNING";
-        if (hour >= 12 && hour < 18) return "AFTERNOON";
-        return "EVENING";
-    }
-
     private void enrichItineraryDetails(ItineraryResponse response) {
         if (response == null || response.getDays() == null) return;
 
-        // 1. Gom toàn bộ ID từ AI trả về
         Set<Long> poiIds = new HashSet<>();
-        for (ItineraryResponse.DayPlan day : response.getDays()) {
+        for (DayPlan day : response.getDays()) {
             if (day.getActivities() != null) {
-                for (ItineraryResponse.Activity act : day.getActivities()) {
+                for (ActivityDTO act : day.getActivities()) {
                     if (act.getId() > 0) {
                         poiIds.add(act.getId());
                     }
@@ -420,44 +162,18 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         if (poiIds.isEmpty()) return;
 
-        // 2. Query DB 1 lần (Batch Query)
-        List<Poi> pois = poiRepository.findAllByIdsWithImages(poiIds);
+        List<Poi> pois = poiRepository.findAllById(poiIds);
 
-        // Tạo Map để tra cứu nhanh: ID -> Poi Object
         Map<Long, Poi> poiMap = pois.stream()
                 .collect(Collectors.toMap(Poi::getId, p -> p));
 
-        // 3. Duyệt lại Response để điền thông tin chính xác
-        for (ItineraryResponse.DayPlan day : response.getDays()) {
+        for (DayPlan day : response.getDays()) {
             if (day.getActivities() != null) {
-                for (ItineraryResponse.Activity act : day.getActivities()) {
-                    Long id = act.getId();
+                for (ActivityDTO act : day.getActivities()) {
+                    // Lấy POI từ Map
+                    Poi realPoi = poiMap.get(act.getId());
 
-                    if (poiMap.containsKey(id)) {
-                        Poi realPoi = poiMap.get(id);
-
-                        // A. Thông tin địa lý & hiển thị
-                        act.setTitle(realPoi.getName());
-                        act.setAddress(realPoi.getAddress());
-                        act.setLat(realPoi.getLatitude());
-                        act.setLng(realPoi.getLongitude());
-                        act.setPrice("0");
-
-                        // B. Xử lý ảnh (Lấy ảnh đầu tiên)
-                        if (realPoi.getMedias() != null && !realPoi.getMedias().isEmpty()) {
-                            act.setImage(realPoi.getMedias().get(0).getUrl());
-                        } else {
-                            act.setImage("https://default-image-url.com/placeholder.jpg");
-                        }
-
-                    } else {
-                        act.setTitle(act.getTitle() != null ? act.getTitle() : "Hoạt động tự do");
-                        act.setAddress("N/A");
-                        act.setImage(null);
-                        act.setLat(0.0);
-                        act.setLng(0.0);
-                        act.setPrice("0");
-                    }
+                    itineraryMapper.enrichActivityWithPoi(act, realPoi);
                 }
             }
         }

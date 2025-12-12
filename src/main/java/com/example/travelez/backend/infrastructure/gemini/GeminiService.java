@@ -1,7 +1,7 @@
-package com.example.travelez.backend.common.service;
+package com.example.travelez.backend.infrastructure.gemini;
 
+import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.Asserts;
-import com.example.travelez.backend.common.exception.ErrorCode;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
@@ -28,7 +28,6 @@ public class GeminiService {
 
     /**
      * 1. BASIC METHOD: Dùng cho các tác vụ Text thông thường (Zero-shot, Chat).
-     * Ví dụ: Chatbot CSKH, Tóm tắt văn bản đơn giản.
      */
     public String generateText(String promptText, ModelType modelType) {
         return callGeminiInternal(promptText, modelType, null);
@@ -53,7 +52,7 @@ public class GeminiService {
             );
 
             if (response == null || response.text() == null) {
-                Asserts.fail(ErrorCode.AI_SERVICE_ERROR, "Empty response from Gemini");
+                Asserts.fail(ResultCode.AI_SERVICE_ERROR, "Empty response from Gemini");
             }
 
             return response.text();
@@ -61,7 +60,7 @@ public class GeminiService {
         } catch (Exception e) {
             log.error("Gemini API Error: ", e);
             throw new com.example.travelez.backend.common.exception.ApiException(
-                    ErrorCode.AI_SERVICE_ERROR, "Error calling AI Provider: " + e.getMessage()
+                    ResultCode.AI_SERVICE_ERROR, "Error calling AI Provider: " + e.getMessage()
             );
         }
     }

@@ -3,7 +3,6 @@ package com.example.travelez.backend.poi.service.impl;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
-import com.example.travelez.backend.common.exception.ErrorCode;
 import com.example.travelez.backend.poi.dto.response.PlaceBaseResponse;
 import com.example.travelez.backend.poi.mapper.PlaceMapper;
 import com.example.travelez.backend.poi.model.Place;
@@ -50,7 +49,7 @@ public class PlaceServiceImpl implements PlaceService {
     public Place getPlaceByCodename(String codeName) {
         return placeRepository.findByCodename(codeName)
                 .orElseThrow(() -> new ApiException(
-                        ErrorCode.DESTINATION_NOT_FOUND, "Không tìm thấy thành phố: " + codeName
+                        ResultCode.NOT_FOUND, "Không tìm thấy thành phố: " + codeName
                 ));
     }
 }

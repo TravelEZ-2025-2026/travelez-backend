@@ -21,7 +21,4 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
             PoiStatus systemStatus,
             PlaceStatus status
     );
-
-    @Query("SELECT p FROM Poi p LEFT JOIN FETCH p.medias WHERE p.id IN :ids")
-    List<Poi> findAllByIdsWithImages(@Param("ids") Collection<Long> ids);
 }

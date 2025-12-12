@@ -1,4 +1,4 @@
-package com.example.travelez.backend.config;
+package com.example.travelez.backend.infrastructure.config;
 
 import com.google.genai.Client;
 import org.springframework.context.annotation.Bean;

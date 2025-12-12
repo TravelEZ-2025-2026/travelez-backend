@@ -14,13 +14,13 @@ import org.springframework.web.bind.annotation.*;
 
 
 @RestController
-@RequestMapping("/api/v1/itinerary")
+@RequestMapping("/api/itinerary")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class ItineraryController {
 
     private final ItineraryServiceImpl itineraryService;
-    private final ObjectMapper objectMapper; // Inject ObjectMapper có sẵn của Spring
+    private final ObjectMapper objectMapper;
 
     @PostMapping("/generate")
     public ResponseEntity<BaseResponse<ItineraryResponse>> generateItinerary(
@@ -29,7 +29,7 @@ public class ItineraryController {
         // Gọi Service xử lý logic
         ItineraryResponse response = itineraryService.generateSmartItinerary(request);
 
-        return BaseResponse.success(response);
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Tạo lộ trình thành công");
     }
 
     @PostMapping("/save")
@@ -43,6 +43,6 @@ public class ItineraryController {
     @GetMapping("/{id}")
     public ResponseEntity<BaseResponse<GetItineraryResponse>> getItineraryDetail(@PathVariable Long id) {
         GetItineraryResponse response = itineraryService.getItineraryDetail(id);
-        return BaseResponse.success(response);
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Lấy chi tiết lộ trình thành công");
     }
 }

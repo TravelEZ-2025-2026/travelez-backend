@@ -29,7 +29,7 @@ public class AuthController {
  
     private final OAuth2Service oAuth2Service;
 
-    private final CaptchaService captchaService;
+//    private final CaptchaService captchaService;
 
     @PostMapping("/register")
     public ResponseEntity<BaseResponse<Void>> register(@RequestBody @Valid UserRegisterRequest request) {

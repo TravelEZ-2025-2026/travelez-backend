@@ -1,6 +1,7 @@
 package com.example.travelez.backend.itinerary.model;
 
 import com.example.travelez.backend.common.model.AuditableEntity;
+import com.example.travelez.backend.itinerary.model.enums.ItineraryStatus;
 import com.example.travelez.backend.users.model.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -36,7 +37,7 @@ public class Itinerary extends AuditableEntity {
     private List<String> destinationCities;
 
     @Column(name = "user_notes", columnDefinition = "TEXT")
-    private String userNotes; // Lưu specialNotes
+    private String userNotes;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -57,22 +58,18 @@ public class Itinerary extends AuditableEntity {
     private String companion;
 
     @Column(columnDefinition = "TEXT")
-    private String objectives; // Mapping từ "reasoningSummary"
+    private String objectives;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private ItineraryStatus status;
 
-    // --- BỔ SUNG QUAN HỆ VỚI USER (TRAVELER) ---
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "traveler_id", nullable = false) // Khớp với ảnh schema 2
+    @JoinColumn(name = "traveler_id", nullable = false)
     private User traveler;
 
     // Quan hệ với Activity
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItineraryActivity> activities;
 
-    public enum ItineraryStatus {
-        PLANNING, ONGOING, COMPLETED, CANCELLED
-    }
 }
