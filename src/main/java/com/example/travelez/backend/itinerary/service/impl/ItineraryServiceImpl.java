@@ -19,6 +19,7 @@ import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.repository.PoiRepository;
 import com.example.travelez.backend.poi.service.PoiService;
+import com.example.travelez.backend.security.component.UserPrinciple;
 import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.repository.UserRepository;
 import com.google.gson.Gson;
@@ -79,9 +80,9 @@ public class ItineraryServiceImpl implements ItineraryService {
             throw new ApiException(ResultCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
         }
 
-        String currentUsername = authentication.getName();
-        User traveler = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy thông tin người dùng: " + currentUsername));
+        UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
+        User traveler = userRepository.findById(userPrinciple.getUserId())
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy thông tin người dùng" ));
 
         ItineraryResponse aiData = request.getAiResult();
         if (aiData == null) {
@@ -120,8 +121,18 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Override
     @Transactional(readOnly = true)
     public GetItineraryResponse getItineraryDetail(Long itineraryId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ApiException(ResultCode.UNAUTHORIZED, "Người dùng chưa đăng nhập");
+        }
+        UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
+
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Không tìm thấy lộ trình"));
+
+        if (itinerary.getTraveler().getId() != currentUser.getUserId()) {
+            throw new ApiException(ResultCode.FORBIDDEN, "Bạn không có quyền truy cập vào lộ trình này");
+        }
 
         List<ItineraryActivity> dbActivities = itineraryActivityRepository
                 .findByItineraryIdOrderByItineraryDateAscStartTimeAsc(itineraryId);

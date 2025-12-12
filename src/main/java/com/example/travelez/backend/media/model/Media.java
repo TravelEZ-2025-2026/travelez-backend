@@ -33,7 +33,4 @@ public class Media {
 
     @Column(name = "cloud_name", columnDefinition = "TEXT")
     private String cloudName;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
 }
