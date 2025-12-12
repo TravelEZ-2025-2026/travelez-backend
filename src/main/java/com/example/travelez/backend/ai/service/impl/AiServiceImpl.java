@@ -24,7 +24,7 @@ public class AiServiceImpl implements AiService {
     public ItineraryResponse generateItinerary(ItineraryCreationRequest request, String poiContextJson) {
         String prompt = itineraryPromptBuilder.buildPrompt(request, poiContextJson);
 
-        String jsonResult = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+        String jsonResult = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
 
         try {
             String cleanJson = jsonResult.replaceAll("\\s*[\\(\\[](?i)(?:ID\\s*)?\\d+[\\)\\]]", "");
