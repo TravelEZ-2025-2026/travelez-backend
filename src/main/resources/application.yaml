@@ -1,11 +1,11 @@
 spring:
   application:
     name: travelez_system
-  #Connect db
+  # Connect db
   datasource:
-    url: jdbc:postgresql://localhost:5435/travelez
-    username: travelez
-    password: travelez
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   #JPA config
   jpa:
     hibernate:
@@ -34,8 +34,16 @@ gcp:
 jwt:
   tokenHeader: Authorization
   secret: ${SECRET_JWT}
-  expiration: 604800 #(60*60*24*7)
+  expiration: ${JWT_EXPIRATION}
   tokenHead: 'Bearer '
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  base-url: "https://generativelanguage.googleapis.com/v1beta/models/"
+
+  models:
+    pro: "gemini-2.5-pro"
+    flash: "gemini-2.5-flash"
 
 server:
   port: 8080

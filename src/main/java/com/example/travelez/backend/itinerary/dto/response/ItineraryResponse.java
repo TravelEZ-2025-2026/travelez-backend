@@ -1,0 +1,13 @@
+package com.example.travelez.backend.itinerary.dto.response;
+
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class ItineraryResponse {
+    private String tripTitle;
+    private List<String> destinationCities;
+    private String reasoningSummary;
+    private List<DayPlan> days;
+}

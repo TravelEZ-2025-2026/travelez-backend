@@ -16,6 +16,8 @@ public enum ResultCode implements IErrorCode {
     VALIDATION_FAILED(HttpServletResponse.SC_BAD_REQUEST, "Validation failed."),
     INTERNAL_SERVER_ERROR(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error."),
     CAPTCHA_INVALID(HttpServletResponse.SC_BAD_REQUEST, "Captcha verification failed."),
+    AI_SERVICE_ERROR(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "AI service did not respond"),
+    AI_RESPONSE_FORMAT_ERROR(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid data format from AI"),
     ;
 
     private final int code;

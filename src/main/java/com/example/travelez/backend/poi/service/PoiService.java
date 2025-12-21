@@ -6,6 +6,7 @@ import com.example.travelez.backend.poi.dto.response.PoiDetailResponse;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.model.enums.PoiStatus;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Pageable;
@@ -19,5 +20,7 @@ public interface PoiService {
     public PoiDetailResponse getPoiDetail(long poiId);
 
     public Optional<Poi> findByIdAndSystemStatus(long poiId, PoiStatus systemStatus);
+
+    public List<Poi> getActivePoisByCity(String codename);
 
 }

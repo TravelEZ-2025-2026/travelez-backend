@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PlaceServiceImpl implements PlaceService {
     private final PlaceRepository placeRepository;
     private final PlaceMapper placeMapper;
@@ -41,5 +43,13 @@ public class PlaceServiceImpl implements PlaceService {
         } catch (Exception e) {
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error fetching places");
         }
+    }
+
+    @Override
+    public Place getPlaceByCodename(String codeName) {
+        return placeRepository.findByCodename(codeName)
+                .orElseThrow(() -> new ApiException(
+                        ResultCode.NOT_FOUND, "City not found: " + codeName
+                ));
     }
 }

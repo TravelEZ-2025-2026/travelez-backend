@@ -9,6 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "media")
 @Getter
