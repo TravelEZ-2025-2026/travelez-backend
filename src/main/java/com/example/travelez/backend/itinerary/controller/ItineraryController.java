@@ -62,4 +62,10 @@ public class ItineraryController {
         ItineraryDetailResponse response = itineraryService.getItineraryDetail(id);
         return BaseResponse.success(response, ResultCode.SUCCESS, "Itinerary details retrieved successfully");
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<BaseResponse<Void>> deleteItinerary(@PathVariable Long id) {
+        itineraryService.deleteItinerary(id);
+        return BaseResponse.success(null, ResultCode.SUCCESS, "Itinerary deleted successfully");
+    }
 }

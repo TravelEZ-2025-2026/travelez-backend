@@ -183,6 +183,21 @@ public class ItineraryServiceImpl implements ItineraryService {
         return response;
     }
 
+    @Override
+    @Transactional
+    public void deleteItinerary(Long itineraryId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
+
+        Itinerary itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
+
+        if (itinerary.getTraveler().getId() != currentUser.getUserId()) {
+            throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to delete this itinerary");
+        }
+
+        itineraryRepository.delete(itinerary);
+    }
     // --- HELPER METHODS ---
 
     private record SimplePoi(long id, String name, String type, String address, Double lat, Double lng, Object hours) {}
