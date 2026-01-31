@@ -1,4 +1,4 @@
-package com.example.travelez.backend.itinerary.dto.response;
+package com.example.travelez.backend.itinerary.dto.response.utils;
 
 import lombok.Data;
 

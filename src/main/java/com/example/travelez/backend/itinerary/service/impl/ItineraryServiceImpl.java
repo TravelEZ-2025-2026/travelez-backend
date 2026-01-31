@@ -1,12 +1,14 @@
 package com.example.travelez.backend.itinerary.service.impl;
 
 import com.example.travelez.backend.ai.service.AiService;
+import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
-import com.example.travelez.backend.itinerary.dto.response.ActivityDTO;
-import com.example.travelez.backend.itinerary.dto.response.DayPlan;
+import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
+import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
+import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
@@ -14,6 +16,7 @@ import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
 import com.example.travelez.backend.itinerary.repository.ItineraryActivityRepository;
 import com.example.travelez.backend.itinerary.repository.ItineraryRepository;
+import com.example.travelez.backend.itinerary.repository.specification.ItinerarySpecification;
 import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.repository.PoiRepository;
@@ -24,6 +27,9 @@ import com.example.travelez.backend.users.repository.UserRepository;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -124,6 +130,34 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         itineraryActivityRepository.saveAll(activities);
         return savedItinerary.getId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommonPage<ItinerarySummaryResponse> getItineraryList(Pageable pageable) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
+
+            Specification<Itinerary> spec = ItinerarySpecification.belongsToUser(currentUser.getUserId());
+
+            Page<Itinerary> itineraries = itineraryRepository.findAll(spec, pageable);
+
+            List<ItinerarySummaryResponse> summaryResponses = itineraries.stream()
+                    .map(itineraryMapper::toSummaryResponse)
+                    .toList();
+
+            return new CommonPage<>(
+                    summaryResponses,
+                    itineraries.getTotalPages(),
+                    itineraries.getTotalElements(),
+                    pageable.getPageSize(),
+                    itineraries.getNumber(),
+                    itineraries.isEmpty()
+            );
+        } catch (Exception e) {
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error fetching itinerary list");
+        }
     }
 
     @Override

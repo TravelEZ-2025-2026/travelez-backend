@@ -1,5 +1,6 @@
 package com.example.travelez.backend.itinerary.dto.response;
 
+import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
 import lombok.Data;
 
 import java.util.List;
