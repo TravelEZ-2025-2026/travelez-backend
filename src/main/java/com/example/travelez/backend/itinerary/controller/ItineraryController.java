@@ -10,8 +10,9 @@ import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
-import com.example.travelez.backend.itinerary.service.impl.ItineraryServiceImpl;
+import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +22,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/itineraries")
 @RequiredArgsConstructor
+@Tag(name= "Itinerary", description = "Itinerary endpoints")
 public class ItineraryController {
 
-    private final ItineraryServiceImpl itineraryService;
+    private final ItineraryService itineraryService;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/generate")
