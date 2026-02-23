@@ -196,6 +196,20 @@ public class ItineraryServiceMockImpl implements ItineraryService {
         itineraryRepository.delete(itinerary);
     }
 
+    @Override
+    public ItineraryResponse replanItinerary(ItinerarySaveRequest request) {
+        try{
+            InputStream is = new ClassPathResource(
+                    "mock/itinerary-response.json"
+            ).getInputStream();
+
+            String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+
+            return gson.fromJson(json, ItineraryResponse.class);
+        } catch (Exception e){
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error replanning itinerary");
+        }
+    }
     // --- HELPER METHODS ---
 
     private List<DayPlan> groupActivitiesByDate(List<ItineraryActivity> dbActivities) {

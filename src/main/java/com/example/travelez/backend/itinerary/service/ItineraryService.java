@@ -14,4 +14,5 @@ public interface ItineraryService {
     ItineraryDetailResponse getItineraryDetail(Long itineraryId);
     CommonPage<ItinerarySummaryResponse> getItineraryList(Pageable pageable);
     void deleteItinerary(Long itineraryId);
+    ItineraryResponse replanItinerary(ItinerarySaveRequest request);
 }

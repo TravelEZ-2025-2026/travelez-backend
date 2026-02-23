@@ -13,6 +13,7 @@ import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryRespo
 import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +31,7 @@ public class ItineraryController {
 
     @PostMapping("/generate")
     public ResponseEntity<BaseResponse<ItineraryResponse>> generateItinerary(
-            @RequestBody ItineraryCreationRequest request) {
+            @Valid @RequestBody ItineraryCreationRequest request) {
 
         // Gọi Service xử lý logic
         ItineraryResponse response = itineraryService.generateSmartItinerary(request);
@@ -69,5 +70,11 @@ public class ItineraryController {
     public ResponseEntity<BaseResponse<Void>> deleteItinerary(@PathVariable Long id) {
         itineraryService.deleteItinerary(id);
         return BaseResponse.success(null, ResultCode.SUCCESS, "Itinerary deleted successfully");
+    }
+
+    @PostMapping("/replan")
+    public ResponseEntity<BaseResponse<ItineraryResponse>> replanItinerary(@Valid @RequestBody ItinerarySaveRequest request) {
+        ItineraryResponse response = itineraryService.replanItinerary(request);
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Itinerary replanned successfully");
     }
 }

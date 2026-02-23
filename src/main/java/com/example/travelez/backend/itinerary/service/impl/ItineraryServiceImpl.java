@@ -200,6 +200,12 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         itineraryRepository.delete(itinerary);
     }
+
+    @Override
+    public ItineraryResponse replanItinerary(ItinerarySaveRequest request) {
+        throw new ApiException(ResultCode.FORBIDDEN, "This feature is not available yet");
+    }
+
     // --- HELPER METHODS ---
 
     private record SimplePoi(long id, String name, String type, String address, Double lat, Double lng, Object hours) {}
