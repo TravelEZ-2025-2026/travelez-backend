@@ -141,3 +141,45 @@ ALTER TABLE traveler ADD CONSTRAINT fk_traveler_users FOREIGN KEY (id) REFERENCE
 ALTER TABLE provider ADD CONSTRAINT fk_provider_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE;
 
 ALTER TABLE media ADD COLUMN cloud_name TEXT;
+
+CREATE TYPE itinerary_status_enum AS ENUM ('PLANNING', 'ONGOING', 'COMPLETED', 'CANCELLED');
+
+CREATE TABLE itinerary (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    styles JSONB,
+    destination_cities JSONB,
+    user_notes TEXT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    budget NUMERIC(12, 2),
+    has_kids BOOLEAN,
+    has_pets BOOLEAN,
+    companion VARCHAR(255),
+    objectives TEXT,
+    status itinerary_status_enum NOT NULL DEFAULT 'PLANNING',
+    traveler_id BIGINT NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP(6),
+
+    CONSTRAINT fk_itinerary_users FOREIGN KEY (traveler_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE itinerary_activity (
+    id BIGSERIAL PRIMARY KEY,
+    description TEXT,
+    start_time TIME(6),
+    end_time TIME(6),
+    time_of_day VARCHAR(50),
+    type poi_type_enum,
+    note TEXT,
+    activity_cost NUMERIC(10, 2),
+    transportation_cost NUMERIC(10, 2),
+    itinerary_date DATE NOT NULL,
+    itinerary_id BIGINT NOT NULL,
+    poi_id BIGINT,
+
+    CONSTRAINT fk_activity_itinerary FOREIGN KEY (itinerary_id) REFERENCES itinerary(id) ON DELETE CASCADE,
+
+    CONSTRAINT fk_activity_poi FOREIGN KEY (poi_id) REFERENCES place_of_interest(id) ON DELETE SET NULL
+);
