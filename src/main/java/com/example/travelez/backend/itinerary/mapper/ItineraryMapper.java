@@ -1,7 +1,8 @@
 package com.example.travelez.backend.itinerary.mapper;
 
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
-import com.example.travelez.backend.itinerary.dto.response.ActivityDTO;
+import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
+import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.model.Itinerary;
@@ -50,6 +51,7 @@ public interface ItineraryMapper {
     @Mapping(target = "days", ignore = true)
     ItineraryDetailResponse toDetailResponseHeader(Itinerary itinerary);
 
+    ItinerarySummaryResponse toSummaryResponse(Itinerary itinerary);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "title", ignore = true)

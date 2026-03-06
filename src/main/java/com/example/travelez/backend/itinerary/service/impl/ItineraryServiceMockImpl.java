@@ -6,11 +6,11 @@ import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
+import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
+import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
 import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
-import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
-import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
@@ -28,6 +28,7 @@ import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -36,6 +37,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,9 +46,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Profile("!mock")
-public class ItineraryServiceImpl implements ItineraryService {
-    private final PoiService poiService;
+@Profile("mock")
+public class ItineraryServiceMockImpl implements ItineraryService {
+
     private final UserRepository userRepository;
     private final ItineraryRepository itineraryRepository;
     private final ItineraryActivityRepository itineraryActivityRepository;
@@ -53,33 +56,25 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final ItineraryMapper itineraryMapper;
 
     private final Gson gson = new Gson();
-    private final AiService aiService;
 
     @Override
-    @Transactional(readOnly = true)
-    public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request) {
-        List<Poi> contextPois = new ArrayList<>();
-        if (request.getDestinationCities() != null) {
-            for (String city : request.getDestinationCities()) {
-                contextPois.addAll(poiService.getActivePoisByCity(city));
-            }
+    public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request){
+        try{
+            InputStream is = new ClassPathResource(
+                    "mock/itinerary-response.json"
+            ).getInputStream();
+
+            String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+
+            return gson.fromJson(json, ItineraryResponse.class);
+        } catch (Exception e){
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error generating itinerary");
         }
-        log.info("Generating itinerary with context of {} POIs", contextPois.size());
-
-        String poiContextJson = serializePois(contextPois);
-
-        ItineraryResponse response = aiService.generateItinerary(request, poiContextJson);
-
-        enrichItineraryDetails(response);
-
-        response.setDestinationCities(request.getDestinationCities());
-
-        return response;
     }
 
     @Override
     @Transactional
-    public Long saveItinerary(ItinerarySaveRequest request) {
+    public Long saveItinerary(ItinerarySaveRequest request){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
 
@@ -135,8 +130,8 @@ public class ItineraryServiceImpl implements ItineraryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public CommonPage<ItinerarySummaryResponse> getItineraryList(Pageable pageable) {
+    @Transactional
+    public CommonPage<ItinerarySummaryResponse> getItineraryList(Pageable pageable){
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
@@ -163,8 +158,8 @@ public class ItineraryServiceImpl implements ItineraryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public ItineraryDetailResponse getItineraryDetail(Long itineraryId) {
+    @Transactional
+    public ItineraryDetailResponse getItineraryDetail(Long itineraryId){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
 
@@ -187,7 +182,7 @@ public class ItineraryServiceImpl implements ItineraryService {
 
     @Override
     @Transactional
-    public void deleteItinerary(Long itineraryId) {
+    public void deleteItinerary(Long itineraryId){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
 
@@ -203,25 +198,19 @@ public class ItineraryServiceImpl implements ItineraryService {
 
     @Override
     public ItineraryResponse replanItinerary(ItinerarySaveRequest request) {
-        throw new ApiException(ResultCode.FORBIDDEN, "This feature is not available yet");
-    }
+        try{
+            InputStream is = new ClassPathResource(
+                    "mock/itinerary-response.json"
+            ).getInputStream();
 
+            String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+
+            return gson.fromJson(json, ItineraryResponse.class);
+        } catch (Exception e){
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error replanning itinerary");
+        }
+    }
     // --- HELPER METHODS ---
-
-    private record SimplePoi(long id, String name, String type, String address, Double lat, Double lng, Object hours) {}
-
-    private String serializePois(List<Poi> pois) {
-        List<SimplePoi> simpleList = pois.stream().map(p -> new SimplePoi(
-                p.getId(),
-                p.getName(),
-                p.getPoiType().toString(),
-                p.getAddress(),
-                p.getLatitude(),
-                p.getLongitude(),
-                p.getOpeningHour()
-        )).collect(Collectors.toList());
-        return gson.toJson(simpleList);
-    }
 
     private List<DayPlan> groupActivitiesByDate(List<ItineraryActivity> dbActivities) {
         if (dbActivities == null || dbActivities.isEmpty()) return new ArrayList<>();
@@ -249,52 +238,4 @@ public class ItineraryServiceImpl implements ItineraryService {
         return days;
     }
 
-    private void enrichItineraryDetails(ItineraryResponse response) {
-        if (response == null || response.getDays() == null) return;
-
-        Set<Long> poiIds = new HashSet<>();
-        for (DayPlan day : response.getDays()) {
-            if (day.getActivities() != null) {
-                for (ActivityDTO act : day.getActivities()) {
-                    if (act.getId() > 0) {
-                        poiIds.add(act.getId());
-                    }
-                }
-            }
-        }
-
-        if (poiIds.isEmpty()) return;
-
-        List<Poi> pois = poiRepository.findAllById(poiIds);
-
-        Map<Long, Poi> poiMap = pois.stream()
-                .collect(Collectors.toMap(Poi::getId, p -> p));
-
-        for (DayPlan day : response.getDays()) {
-            if (day.getActivities() != null) {
-                for (ActivityDTO act : day.getActivities()) {
-                    Poi realPoi = poiMap.get(act.getId());
-                    if (realPoi != null) {
-                        act.setTitle(realPoi.getName());
-                        act.setAddress(realPoi.getAddress());
-                        act.setLat(realPoi.getLatitude());
-                        act.setLng(realPoi.getLongitude());
-                        act.setPrice("0");
-                        if (realPoi.getMedias() != null && !realPoi.getMedias().isEmpty()) {
-                            act.setImage(realPoi.getMedias().get(0).getUrl());
-                        } else {
-                            act.setImage(null);
-                        }
-                    } else {
-                        if (act.getTitle() == null) act.setTitle("Hoạt động tự do");
-                        act.setAddress("N/A");
-                        act.setImage(null);
-                        act.setLat(0.0);
-                        act.setLng(0.0);
-                        act.setPrice("0");
-                    }
-                }
-            }
-        }
-    }
 }
