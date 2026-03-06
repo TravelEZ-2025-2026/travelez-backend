@@ -1,11 +1,13 @@
 package com.example.travelez.backend.users.controller;
 
+import com.example.travelez.backend.common.api.BaseResponse;
+import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.security.component.UserPrinciple;
 import com.example.travelez.backend.users.dto.response.UserDetailResponse;
 import com.example.travelez.backend.users.mapper.UserMapper;
-
+import com.example.travelez.backend.users.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,13 +15,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.travelez.backend.common.api.BaseResponse;
-import com.example.travelez.backend.common.api.ResultCode;
-import com.example.travelez.backend.security.component.UserPrinciple;
-import com.example.travelez.backend.users.service.UserService;
-
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Tag(name = "User", description = "User endpoints")
 public class UserController {

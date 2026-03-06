@@ -13,6 +13,24 @@ services:
       - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  redis-cache:
+    image: redis:alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server 
+      --save "" 
+      --appendonly no
+      --maxmemory 512mb 
+      --maxmemory-policy allkeys-lru
+    restart: always
+    networks:
+      - redis-net
 
 volumes:
   postgres_data:
+
+networks:
+  redis-net:
+    driver: bridge

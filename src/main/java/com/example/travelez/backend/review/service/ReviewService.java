@@ -13,7 +13,7 @@ public interface ReviewService {
     public CommonPage<ReviewBaseResponse> getReviewByPoiId(ReviewFilterRequest reviewFilterRequest,
                                                            Pageable pageable);
 
-    public void createReview(Long poiId, ReviewCreateRequest request, List<MultipartFile> files);
+    public ReviewBaseResponse createReview(Long poiId, ReviewCreateRequest request, List<MultipartFile> files);
 
     public void deleteReview(Long reviewId);
 }
