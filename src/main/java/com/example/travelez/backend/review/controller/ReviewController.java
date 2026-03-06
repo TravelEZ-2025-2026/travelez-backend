@@ -54,9 +54,9 @@ public class ReviewController {
     @ApiBaseResponses
     @ApiResponse(responseCode = "200", description = "Review created successfully")
     @PostMapping(value = "/pois/{poiId}/reviews", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<BaseResponse<Void>> createReview(@PathVariable Long poiId, @ModelAttribute @Valid ReviewCreateRequest request) {
-        reviewService.createReview(poiId, request, request.getFiles());
-        return BaseResponse.success(null, ResultCode.SUCCESS, "Review created successfully");
+    public ResponseEntity<BaseResponse<ReviewBaseResponse>> createReview(@PathVariable Long poiId, @ModelAttribute @Valid ReviewCreateRequest request) {
+        ReviewBaseResponse reviewBaseResponse = reviewService.createReview(poiId, request, request.getFiles());
+        return BaseResponse.success(reviewBaseResponse, ResultCode.SUCCESS, "Review created successfully");
     }
 
     @PreAuthorize("hasAnyRole('TRAVELER', 'ADMIN')")

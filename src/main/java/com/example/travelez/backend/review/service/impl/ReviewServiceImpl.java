@@ -72,7 +72,7 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createReview(Long poiId, ReviewCreateRequest request, List<MultipartFile> files) {
+    public ReviewBaseResponse createReview(Long poiId, ReviewCreateRequest request, List<MultipartFile> files) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
         poiService.findByIdAndSystemStatus(poiId, PoiStatus.ACTIVE)
@@ -104,7 +104,8 @@ public class ReviewServiceImpl implements ReviewService {
                 review.setMedias(savedMedia);
             }
 
-            reviewRepository.save(review);
+            ReviewBaseResponse result = reviewMapper.toReviewBaseResponse(reviewRepository.save(review));
+            return result;
         } catch (Exception e) {
             mediaService.cleanupFilesAsync(uploadedFiles);
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Failed to create review");
