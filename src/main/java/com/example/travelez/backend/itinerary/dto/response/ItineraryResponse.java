@@ -7,6 +7,7 @@ import java.util.List;
 
 @Data
 public class ItineraryResponse {
+    private String tempId;
     private String tripTitle;
     private List<String> destinationCities;
     private String reasoningSummary;

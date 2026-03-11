@@ -66,10 +66,21 @@ public class ItineraryServiceMockImpl implements ItineraryService {
 
             String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
 
-            return gson.fromJson(json, ItineraryResponse.class);
+            ItineraryResponse response = gson.fromJson(json, ItineraryResponse.class);
+
+            response.setTempId(UUID.randomUUID().toString());
+
+            return response;
         } catch (Exception e){
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error generating itinerary");
         }
+    }
+
+    @Override
+    public ItineraryResponse getTempItinerary(String tempId) {
+        ItineraryResponse response = generateSmartItinerary(new ItineraryCreationRequest());
+        response.setTempId(tempId);
+        return response;
     }
 
     @Override
