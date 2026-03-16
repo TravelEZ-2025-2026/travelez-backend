@@ -18,6 +18,7 @@ public enum ResultCode implements IErrorCode {
     CAPTCHA_INVALID(HttpServletResponse.SC_BAD_REQUEST, "Captcha verification failed."),
     AI_SERVICE_ERROR(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "AI service did not respond"),
     AI_RESPONSE_FORMAT_ERROR(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid data format from AI"),
+    BAD_REQUEST(HttpServletResponse.SC_BAD_REQUEST, "Bad request.")
     ;
 
     private final int code;
