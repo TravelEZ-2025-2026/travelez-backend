@@ -77,4 +77,10 @@ public class ItineraryController {
         ItineraryResponse response = itineraryService.replanItinerary(request);
         return BaseResponse.success(response, ResultCode.SUCCESS, "Itinerary replanned successfully");
     }
+
+    @GetMapping("/temp/{tempId}")
+    public ResponseEntity<BaseResponse<ItineraryResponse>> getTempItinerary(@PathVariable String tempId) {
+        ItineraryResponse response = itineraryService.getTempItinerary(tempId);
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Recovered temporary itinerary");
+    }
 }

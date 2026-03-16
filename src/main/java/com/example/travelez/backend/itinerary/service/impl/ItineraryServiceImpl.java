@@ -16,6 +16,7 @@ import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
 import com.example.travelez.backend.itinerary.repository.ItineraryActivityRepository;
 import com.example.travelez.backend.itinerary.repository.ItineraryRepository;
+import com.example.travelez.backend.itinerary.repository.cache.ItineraryCacheRepository;
 import com.example.travelez.backend.itinerary.repository.specification.ItinerarySpecification;
 import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.example.travelez.backend.poi.model.Poi;
@@ -51,6 +52,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final ItineraryActivityRepository itineraryActivityRepository;
     private final PoiRepository poiRepository;
     private final ItineraryMapper itineraryMapper;
+    private final ItineraryCacheRepository itineraryCacheRepository;
 
     private final Gson gson = new Gson();
     private final AiService aiService;
@@ -74,7 +76,22 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         response.setDestinationCities(request.getDestinationCities());
 
+        String tempId = UUID.randomUUID().toString();
+
+        response.setTempId(tempId);       // Set temp id for using redis cache
+
+        itineraryCacheRepository.save(tempId, response);
+
         return response;
+    }
+
+    @Override
+    public ItineraryResponse getTempItinerary(String tempId) {
+        ItineraryResponse data = itineraryCacheRepository.get(tempId);
+        if (data == null) {
+            throw new ApiException(ResultCode.NOT_FOUND, "The session has expired");
+        }
+        return data;
     }
 
     @Override
