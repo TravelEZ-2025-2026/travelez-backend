@@ -1,15 +1,13 @@
 package com.example.travelez.backend.users.model;
 
-import java.time.LocalDateTime;
-
+import com.example.travelez.backend.common.model.AuditableEntity;
+import jakarta.persistence.*;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
-import com.example.travelez.backend.common.model.AuditableEntity;
-
-import jakarta.persistence.*;
-import lombok.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -58,6 +56,12 @@ public class User extends AuditableEntity {
 
     @Column(name = "google_id")
     private String googleId;
+
+    @Column(name = "follower_count", nullable = false)
+    private Long followerCount;
+
+    @Column(name = "following_count", nullable = false)
+    private Long followingCount;
 
     @Column(name = "provider")
     @Enumerated(EnumType.STRING)
