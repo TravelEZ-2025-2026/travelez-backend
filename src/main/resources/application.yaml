@@ -10,7 +10,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: false
+    show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -29,9 +29,9 @@ google:
 
 gcp:
   bucket:
-    name: "travelez-media"
-    credentials-path: "gcs-key.json"
-    project-id: "travelez-480112"
+    name: ${GCS_BUCKET_NAME}
+    credentials-path: ${GCS_CREDENTIALS_PATH}
+    project-id: ${GCS_PROJECT_ID}
 
 #JWT config
 jwt:
