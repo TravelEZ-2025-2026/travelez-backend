@@ -4,6 +4,7 @@ import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.infrastructure.filestorage.FileStorageService;
 import com.example.travelez.backend.infrastructure.filestorage.dto.UploadFileResult;
+import com.example.travelez.backend.media.model.enums.MediaType;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,7 +30,7 @@ public class GcsService implements FileStorageService {
     }
 
     @Override
-    public UploadFileResult uploadFile(MultipartFile file, String destinationPath) {
+    public UploadFileResult uploadFile(MultipartFile file, String destinationPath, MediaType mediaType) {
 
         String fileName = destinationPath + UUID.randomUUID().toString() + "-" + file.getOriginalFilename();
 
@@ -41,7 +43,7 @@ public class GcsService implements FileStorageService {
         try {
             storage.create(blobInfo, file.getBytes());
             String publicUrl = "https://storage.googleapis.com/" + bucketName + "/" + fileName;
-            return new UploadFileResult(publicUrl, fileName);
+            return new UploadFileResult(publicUrl, fileName, mediaType);
         } catch (IOException e) {
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Failed to upload file to GCS: ");
         }
@@ -54,5 +56,20 @@ public class GcsService implements FileStorageService {
         }
         BlobId blobId = BlobId.of(bucketName, blobName);
         storage.delete(blobId);
+    }
+
+    @Override
+    public void deleteFiles(List<String> cloudNames) {
+        if (cloudNames == null || cloudNames.isEmpty()) {
+            return;
+        }
+        List<BlobId> blobIds = cloudNames.stream()
+                .map(blobName -> BlobId.of(bucketName, blobName))
+                .toList();
+        try {
+            storage.delete(blobIds);
+        } catch (Exception e) {
+            System.err.println("Batch delete failed: " + e.getMessage());
+        }
     }
 }

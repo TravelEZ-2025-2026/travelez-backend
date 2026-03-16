@@ -107,7 +107,7 @@ public class ReviewServiceImpl implements ReviewService {
             ReviewBaseResponse result = reviewMapper.toReviewBaseResponse(reviewRepository.save(review));
             return result;
         } catch (Exception e) {
-            mediaService.cleanupFilesAsync(uploadedFiles);
+            mediaService.cleanupFilesAsync(uploadedFiles.stream().map(UploadFileResult::getCloudName).toList());
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Failed to create review");
         }
     }
