@@ -144,7 +144,7 @@ CREATE TABLE media_poi (
     PRIMARY KEY (place_of_interest_id, media_id)
 );
 
-CREATE TABLE media_post (
+CREATE TABLE media_posts (
     media_id BIGINT REFERENCES media(id) ON DELETE CASCADE,
     post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
     PRIMARY KEY (post_id, media_id)
