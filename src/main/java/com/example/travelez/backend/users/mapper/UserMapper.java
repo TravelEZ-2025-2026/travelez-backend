@@ -13,16 +13,24 @@ import org.mapstruct.Mapping;
 public interface UserMapper {
 
     @Mapping(target = "status", constant = "ACTIVE")
+    @Mapping(target = "followerCount", defaultValue = "0", ignore = true)
+    @Mapping(target = "followingCount", defaultValue = "0", ignore = true)
     User toUser(UserRegisterRequest request);
 
     UserDetailResponse toUserDetailResponse(User user);
 
     @Mapping(target = "status", constant = "ACTIVE")
+    @Mapping(target = "followerCount", constant = "0L")
+    @Mapping(target = "followingCount", constant = "0L")
     Traveler toTraveler(UserRegisterRequest request);
 
     @Mapping(target = "status", constant = "ACTIVE")
+    @Mapping(target = "followerCount", constant = "0L")
+    @Mapping(target = "followingCount", constant = "0L")
     Provider toProvider(UserRegisterRequest request);
 
     @Mapping(target = "status", constant = "ACTIVE")
+    @Mapping(target = "followerCount", constant = "0L")
+    @Mapping(target = "followingCount", constant = "0L")
     Admin toAdmin(UserRegisterRequest request);
 }
