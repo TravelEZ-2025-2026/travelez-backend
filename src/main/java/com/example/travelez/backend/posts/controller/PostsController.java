@@ -90,4 +90,9 @@ public class PostsController {
         return BaseResponse.success(null, ResultCode.SUCCESS, "Post updated successfully");
     }
 
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<BaseResponse<Void>> deletePost(@PathVariable Long postId) {
+        postsService.deletePost(postId);
+        return BaseResponse.success(null, ResultCode.SUCCESS, "Post deleted successfully");
+    }
 }

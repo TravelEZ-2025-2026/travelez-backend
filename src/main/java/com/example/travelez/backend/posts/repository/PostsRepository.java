@@ -3,15 +3,14 @@ package com.example.travelez.backend.posts.repository;
 import com.example.travelez.backend.posts.model.Posts;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
 public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecificationExecutor<Posts> {
 
+    @EntityGraph(attributePaths = {"user"})
     Optional<Posts> findByIdAndUserId(Long postId, Long userId);
 
     @Query("SELECT p FROM Posts p WHERE (p.user.id = :id OR p.user.id in (SELECT f.following.id FROM Follow f WHERE f.follower.id = :id)) AND p.status = 'PUBLIC' ORDER BY p.id DESC ")
@@ -34,4 +33,11 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
             "AND p.id < :lastPostId " +
             "ORDER BY p.id DESC ")
     Slice<Posts> findSuggestedPostsNextPage(@Param("id") Long userId, @Param("lastPostId") Long lastPostId, Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM posts WHERE id = :postId", nativeQuery = true)
+    void deletePostById(Long postId);
+
+    boolean existsByIdAndUserId(Long postId, Long userId);
+
 }

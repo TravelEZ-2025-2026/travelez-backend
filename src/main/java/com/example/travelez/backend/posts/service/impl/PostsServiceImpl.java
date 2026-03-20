@@ -113,6 +113,40 @@ public class PostsServiceImpl implements PostsService {
     }
 
     @Override
+    public void deletePost(Long postId) {
+        boolean isOwner = postsRepository.existsByIdAndUserId(postId, SecurityUtils.getCurrentUserId());
+        if (!isOwner) {
+            throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to delete this post");
+        }
+        List<Media> mediaList = mediaRepository.findAllByPostId(postId);
+        List<Long> mediaIds = mediaList.stream().map(Media::getId).toList();
+        List<String> fileNamesToDelete = mediaList.stream().map(Media::getCloudName).toList();
+        transactionTemplate.execute(status -> {
+            postsRepository.deletePostById(postId);
+            mediaRepository.deleteAllByIdInBatch(mediaIds);
+            return null;
+        });
+        mediaService.cleanupFilesAsync(fileNamesToDelete);
+    }
+
+    @Override
+    public boolean isUserCommentPost(Long userId, Posts posts) {
+        if (userId == null) {
+            return false;
+        }
+        PostStatus status = posts.getStatus();
+        if (status == PostStatus.BANNED || status == PostStatus.DRAFT) {
+            return false;
+        }
+        if (status == PostStatus.ARCHIVED) {
+//        only owner can comment
+            return posts.getUser().getId() == userId;
+        }
+//        public posts
+        return true;
+    }
+
+    @Override
     public PostsDetailResponse getPostDetail(Long postId) {
         Posts post = postsRepository.findById(postId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Post not found"));

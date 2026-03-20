@@ -8,12 +8,17 @@ import com.example.travelez.backend.posts.dto.request.PostsSearchRequest;
 import com.example.travelez.backend.posts.dto.request.PostsUpdateRequest;
 import com.example.travelez.backend.posts.dto.response.PostResponse;
 import com.example.travelez.backend.posts.dto.response.PostsDetailResponse;
+import com.example.travelez.backend.posts.model.Posts;
 import org.springframework.data.domain.Pageable;
 
 public interface PostsService {
     void createPost(PostsCreateRequest request);
 
     void updatePost(Long postId, PostsUpdateRequest request);
+
+    void deletePost(Long postId);
+
+    boolean isUserCommentPost(Long userId, Posts posts);
 
     PostsDetailResponse getPostDetail(Long postId);
 
