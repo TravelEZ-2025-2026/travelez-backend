@@ -120,6 +120,7 @@ CREATE TABLE posts (
     status post_status NOT NULL DEFAULT 'DRAFT',
     folder_id  UUID NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP,
     published_at TIMESTAMP
 );
 
@@ -208,4 +209,21 @@ CREATE TABLE itinerary_activity (
     CONSTRAINT fk_activity_itinerary FOREIGN KEY (itinerary_id) REFERENCES itinerary(id) ON DELETE CASCADE,
 
     CONSTRAINT fk_activity_poi FOREIGN KEY (poi_id) REFERENCES place_of_interest(id) ON DELETE SET NULL
+);
+
+CREATE TABLE comment (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    parent_comment_id BIGINT REFERENCES comment(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE media_comment (
+    media_id BIGINT REFERENCES media(id) ON DELETE CASCADE,
+    comment_id BIGINT REFERENCES comment(id) ON DELETE CASCADE,
+    PRIMARY KEY (media_id, comment_id)
 );
