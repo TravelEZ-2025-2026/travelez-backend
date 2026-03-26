@@ -108,6 +108,10 @@ public class Poi extends AuditableEntity {
     @JoinColumn(name = "place_id")
     private Place place;
 
+    @ManyToOne
+    @JoinColumn(name = "ward_id")
+    private Ward ward;
+
     // @OneToMany(fetch = FetchType.LAZY, mappedBy = "poi", cascade =
     // CascadeType.ALL, orphanRemoval = true)
     // private List<Review> reviews;

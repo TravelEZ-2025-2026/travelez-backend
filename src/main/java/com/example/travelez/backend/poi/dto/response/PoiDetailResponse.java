@@ -25,5 +25,5 @@ public class PoiDetailResponse extends PoiBaseResponse {
     private List<OpeningHours> openingHour;
     private ReviewDistributions reviewsDistribution;
     private Map<String, Boolean> additionalInfo;
-    private List<MediaBaseResponse> medias;
+    // private List<MediaBaseResponse> medias;
 }

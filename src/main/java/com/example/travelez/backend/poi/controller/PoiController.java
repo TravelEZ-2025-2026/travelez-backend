@@ -36,6 +36,7 @@ public class PoiController {
     public ResponseEntity<BaseResponse<CommonPage<PoiBaseResponse>>> findAllPoi(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long placeId,
+            @RequestParam(required = false) Long wardId,
             @RequestParam(required = false) PoiType poiType,
             @RequestParam(required = false) PlaceStatus placeStatus,
             @RequestParam(required = false) Double rating,
@@ -48,6 +49,7 @@ public class PoiController {
 
         PoiFilterRequest poiFilterRequest = PoiFilterRequest.builder()
                 .placeId(placeId)
+                .wardId(wardId)
                 .name(name)
                 .poiType(poiType)
                 .placeStatus(placeStatus)

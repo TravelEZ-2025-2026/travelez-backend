@@ -55,6 +55,15 @@ public class PoiSpecification {
         };
     }
 
+    public static Specification<Poi> filterByWardId(Long wardId) {
+        return (root, query, criteriaBuilder) -> {
+            if (wardId == null) {
+                return null;
+            }
+            return criteriaBuilder.equal(root.get("ward").get("id"), wardId);
+        };
+    }
+
     public static Specification<Poi> filterBySystemStatus(PoiStatus systemStatus) {
         return (root, query, criteriaBuilder) -> {
             if (systemStatus == null) {

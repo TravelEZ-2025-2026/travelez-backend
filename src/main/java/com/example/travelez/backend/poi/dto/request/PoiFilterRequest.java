@@ -10,6 +10,7 @@ import lombok.Data;
 @Builder
 public class PoiFilterRequest {
     private Long placeId;
+    private Long wardId;
     private String name;
     private PoiType poiType;
     private PlaceStatus placeStatus;
