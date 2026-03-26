@@ -4,9 +4,12 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.poi.dto.response.PlaceBaseResponse;
+import com.example.travelez.backend.poi.dto.response.WardBaseResponse;
 import com.example.travelez.backend.poi.mapper.PlaceMapper;
+import com.example.travelez.backend.poi.mapper.WardMapper;
 import com.example.travelez.backend.poi.model.Place;
 import com.example.travelez.backend.poi.repository.PlaceRepository;
+import com.example.travelez.backend.poi.repository.WardRepository;
 import com.example.travelez.backend.poi.repository.specification.PlaceSpecification;
 import com.example.travelez.backend.poi.service.PlaceService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +28,9 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class PlaceServiceImpl implements PlaceService {
     private final PlaceRepository placeRepository;
+    private final WardRepository wardRepository;
     private final PlaceMapper placeMapper;
+    private final WardMapper wardMapper;
 
     public CommonPage<PlaceBaseResponse> findAllPlace(String name, String country, String countryCode,
             Pageable pageable) {
@@ -51,5 +56,12 @@ public class PlaceServiceImpl implements PlaceService {
                 .orElseThrow(() -> new ApiException(
                         ResultCode.NOT_FOUND, "City not found: " + codeName
                 ));
+    }
+
+    @Override
+    public List<WardBaseResponse> getAllWardsOfPlace(Long placeId) {
+        return wardRepository.findAllByPlace_Id(placeId).stream()
+                .map(wardMapper::toWardBaseResponse)
+                .toList();
     }
 }

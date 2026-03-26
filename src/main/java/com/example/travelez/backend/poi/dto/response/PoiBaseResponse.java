@@ -1,5 +1,8 @@
 package com.example.travelez.backend.poi.dto.response;
 
+import java.util.List;
+
+import com.example.travelez.backend.media.dto.response.MediaBaseResponse;
 import com.example.travelez.backend.poi.model.enums.PlaceStatus;
 import com.example.travelez.backend.poi.model.enums.PoiStatus;
 import com.example.travelez.backend.poi.model.enums.PoiType;
@@ -26,5 +29,5 @@ public class PoiBaseResponse {
     private Integer reviewCount;
     private PlaceStatus status;
     private String googleMapsUrl;
-
+    private List<MediaBaseResponse> medias;
 }

@@ -7,14 +7,19 @@ import com.example.travelez.backend.common.api.doc.ApiBaseResponses;
 import com.example.travelez.backend.common.dto.PaginationRequest;
 import com.example.travelez.backend.common.utils.PaginationUtils;
 import com.example.travelez.backend.poi.dto.response.PlaceBaseResponse;
+import com.example.travelez.backend.poi.dto.response.WardBaseResponse;
 import com.example.travelez.backend.poi.service.PlaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,4 +48,15 @@ public class PlaceController {
                 PaginationUtils.getPageable(request));
         return BaseResponse.success(pageResponse, ResultCode.SUCCESS, "Places fetched successfully");
     }
+
+    // Lấy danh sách các wards của một place
+    @Operation(summary = "Get all wards of a place", description = "Get all wards of a place")
+    @ApiBaseResponses
+    @ApiResponse(responseCode = "200", description = "Wards fetched successfully")
+    @GetMapping("/{placeId}/wards")
+    public ResponseEntity<BaseResponse<List<WardBaseResponse>>> getAllWardsOfPlace(@PathVariable Long placeId) {
+        List<WardBaseResponse> wards = placeService.getAllWardsOfPlace(placeId);
+        return BaseResponse.success(wards, ResultCode.SUCCESS, "Wards fetched successfully");
+    }
+    
 }

@@ -4,6 +4,9 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
+import com.example.travelez.backend.media.model.Media;
+import com.example.travelez.backend.media.repository.MediaRepository;
+import com.example.travelez.backend.media.service.MediaService;
 import com.example.travelez.backend.poi.dto.request.PoiFilterRequest;
 import com.example.travelez.backend.poi.dto.response.PoiBaseResponse;
 import com.example.travelez.backend.poi.dto.response.PoiDetailResponse;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -36,6 +40,7 @@ public class PoiServiceImpl implements PoiService {
     private final PoiRepository poiRepository;
     private final PoiMapper poiMapper;
     private final PlaceService placeService;
+    private final MediaService mediaService;
 
     // service public
     public CommonPage<PoiBaseResponse> findAllPoi(PoiFilterRequest request, Pageable pageable) {
@@ -43,14 +48,18 @@ public class PoiServiceImpl implements PoiService {
         List<Specification<Poi>> specs = new ArrayList<>();
         specs.add(PoiSpecification.filterBySystemStatus(PoiStatus.ACTIVE));
         specs.add(PoiSpecification.filterByPlaceId(request.getPlaceId()));
+        specs.add(PoiSpecification.filterByWardId(request.getWardId()));
         specs.add(PoiSpecification.filterByName(request.getName()));
         specs.add(PoiSpecification.filterByPoiType(request.getPoiType()));
         specs.add(PoiSpecification.filterByPlaceStatus(request.getPlaceStatus()));
         specs.add(PoiSpecification.filterByRating(request.getRating()));
 
         Page<Poi> pois = poiRepository.findAll(Specification.allOf(specs), pageable);
-        List<PoiBaseResponse> poiBaseResponses = pois.stream()
-                .map(poiMapper::toPoiBaseResponse)
+        List<Long> poiIds = pois.getContent().stream().map(item -> item.getId()).toList();
+        List<Object[]> mediaData = poiRepository.findAllMediasByPoiIds(poiIds);
+        Map<Long, List<Media>> mediaMap = mediaService.groupMediaByParentId(mediaData);
+        List<PoiBaseResponse> poiBaseResponses = pois.getContent().stream()
+                .map(poi -> poiMapper.toPoiBaseResponse(poi, mediaMap.getOrDefault(poi.getId(), List.of())))
                 .toList();
 
         return new CommonPage<>(poiBaseResponses, pois.getTotalPages(), pois.getTotalElements(),
