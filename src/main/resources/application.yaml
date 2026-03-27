@@ -1,20 +1,31 @@
 spring:
   application:
     name: travelez_system
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB  
   # Connect db
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
   #JPA config
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+  # RabbitMQ config
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: 5672
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
 
   profiles:
     active: mock
@@ -50,4 +61,15 @@ gemini:
 
 server:
   port: 8080
+  forward-headers-strategy: framework
 
+travelez:
+  swagger:
+    server-url: ${SWAGGER_SERVER_URL:http://localhost:8080}
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  task:
+    cleanup:
+      batch-size: ${TASK_CLEANUP_BATCH_SIZE:100}
+      days-to-keep: ${TASK_CLEANUP_DAYS_TO_KEEP:7}
