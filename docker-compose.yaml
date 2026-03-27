@@ -4,33 +4,73 @@ services:
   db:
     image: postgres:latest
     container_name: travelez_db
-    restart: always
     environment:
-      POSTGRES_USER: travelez
-      POSTGRES_PASSWORD: travelez
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: travelez
     ports:
-      - "5435:5432"
+      - "5439:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-  redis-cache:
-    image: redis:alpine
-    container_name: redis-cache
+      - travelez_postgres_data:/var/lib/postgresql
+    deploy:
+      resources:
+        limits:
+          memory: 200M    
+  # RabbitMQ Service
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: travelez_rabbitmq
     ports:
-      - "6379:6379"
+      - "5672:5672"   # Port mặc định của RabbitMQ (AMQP)
+      - "15672:15672" # Port trang quản trị (Management UI)
+      - "61613:61613" # Port STOMP (Cực kỳ quan trọng cho Chat WebSocket)
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     command: >
-      redis-server 
-      --save "" 
-      --appendonly no
-      --maxmemory 512mb 
-      --maxmemory-policy allkeys-lru
-    restart: always
-    networks:
-      - redis-net
+      bash -c "rabbitmq-plugins enable --offline rabbitmq_management rabbitmq_stomp && rabbitmq-server"
+    volumes:
+      - travelez_rabbitmq_data:/var/lib/rabbitmq # Lưu dữ liệu để không mất queue khi restart
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+
+  # Travelez Backend Service
+  backend:
+    build: .
+    container_name: travelez_be
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - rabbitmq
+    env_file:
+      - .env
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/travelez?stringtype=unspecified
+      RABBITMQ_HOST: rabbitmq
+      GCS_CREDENTIALS_PATH: /app/gcs-key.json
+      JAVA_OPTS: "-Xmx400m -Xms256m"
 
 volumes:
-  postgres_data:
+  travelez_postgres_data:
+  travelez_rabbitmq_data:
 
-networks:
-  redis-net:
-    driver: bridge
+# networks:
+#   redis-net:
+#     driver: bridge
+  # redis-cache:
+  #   image: redis:alpine
+  #   container_name: redis-cache
+  #   ports:
+  #     - "6379:6379"
+  #   command: >
+  #     redis-server 
+  #     --save "" 
+  #     --appendonly no
+  #     --maxmemory 512mb 
+  #     --maxmemory-policy allkeys-lru
+  #   restart: always
+  #   networks:
+  #     - redis-net
