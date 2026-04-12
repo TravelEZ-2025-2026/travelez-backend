@@ -4,6 +4,14 @@
     "thanh_pho_ho_chi_minh"
   ],
   "reasoningSummary": "Chào mừng bạn và những người bạn đến với Sài Gòn! Lịch trình này được thiết kế đặc biệt để mang đến trải nghiệm thư giãn, khám phá văn hóa và thưởng thức ẩm thực đa dạng, đồng thời đảm bảo sức khỏe với các hoạt động xen kẽ. Chúng ta sẽ ưu tiên các điểm đến gần trung tâm, dễ dàng di chuyển và có những gợi ý thú vị để bạn tận hưởng trọn vẹn từng khoảnh khắc, từ những di tích lịch sử đến những khu phố sôi động về đêm.",
+  "estimatedBudget": {
+    "total": 5600000,
+    "transportation": 500000,
+    "activity": 600000,
+    "foodAndDrink": 3500000,
+    "accommodation": 1000000,
+    "currency": "VND"
+  },
   "days": [
     {
       "dayIndex": 1,

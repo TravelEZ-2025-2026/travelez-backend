@@ -239,3 +239,13 @@ CREATE TABLE media_comment (
     comment_id BIGINT REFERENCES comment(id) ON DELETE CASCADE,
     PRIMARY KEY (media_id, comment_id)
 );
+
+ALTER TABLE place_of_interest ADD COLUMN semantic_text TEXT, ADD COLUMN gemini_vector vector(768);
+
+ALTER TABLE itinerary
+    ADD COLUMN estimated_total_price NUMERIC(12, 2),
+    ADD COLUMN estimated_transportation_price NUMERIC(12, 2),
+    ADD COLUMN estimated_activity_price NUMERIC(12, 2),
+    ADD COLUMN estimated_food_and_drink_price NUMERIC(12, 2),
+    ADD COLUMN estimated_accommodation_price NUMERIC(12, 2),
+    ADD COLUMN estimated_currency VARCHAR(10);

@@ -17,7 +17,7 @@ public class GeminiService {
 
     public enum ModelType {
         PRO("gemini-2.5-pro"),
-        FLASH_LITE("gemini-2.5-flash-lite"),
+        FLASH_LITE("gemini-3.1-flash-lite-preview"),
         FLASH("gemini-2.5-flash");
 
         public final String modelName;

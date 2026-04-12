@@ -24,4 +24,16 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
 
     @Query("SELECT poi.id, m FROM Poi poi JOIN poi.medias m WHERE poi.id IN :placeOfInterestIds")
     List<Object[]> findAllMediasByPoiIds(@Param("placeOfInterestIds") List<Long> placeOfInterestIds);
+
+    @Query(value = """
+            SELECT p.* FROM place_of_interest p 
+            WHERE p.poi_type = :category
+            ORDER BY p.gemini_vector <=> cast(:queryVector as vector) ASC 
+            LIMIT :kLimit
+            """, nativeQuery = true)
+    List<Poi> findTopPoisByCategoryAndVector(
+            @Param("category") String category,
+            @Param("queryVector") String queryVector,
+            @Param("kLimit") int kLimit
+    );
 }

@@ -1,6 +1,6 @@
 package com.example.travelez.backend.itinerary.service.impl;
 
-import com.example.travelez.backend.ai.service.AiService;
+import com.example.travelez.backend.ai.pipeline.facade.AiItineraryFacade;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
@@ -21,11 +21,9 @@ import com.example.travelez.backend.itinerary.repository.specification.Itinerary
 import com.example.travelez.backend.itinerary.service.ItineraryService;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.repository.PoiRepository;
-import com.example.travelez.backend.poi.service.PoiService;
 import com.example.travelez.backend.security.component.UserPrinciple;
 import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.repository.UserRepository;
-import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -46,42 +44,24 @@ import java.util.stream.Collectors;
 @Slf4j
 @Profile("!mock")
 public class ItineraryServiceImpl implements ItineraryService {
-    private final PoiService poiService;
     private final UserRepository userRepository;
     private final ItineraryRepository itineraryRepository;
     private final ItineraryActivityRepository itineraryActivityRepository;
     private final PoiRepository poiRepository;
     private final ItineraryMapper itineraryMapper;
     private final ItineraryCacheRepository itineraryCacheRepository;
-
-    private final Gson gson = new Gson();
-    private final AiService aiService;
+    private final AiItineraryFacade aiPipelineFacade;
 
     @Override
-    @Transactional(readOnly = true)
     public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request) {
-        List<Poi> contextPois = new ArrayList<>();
-        if (request.getDestinationCities() != null) {
-            for (String city : request.getDestinationCities()) {
-                contextPois.addAll(poiService.getActivePoisByCity(city));
-            }
+        ItineraryResponse response = aiPipelineFacade.orchestratePipeline(request);
+
+        if (response != null) {
+            String tempId = UUID.randomUUID().toString();
+            response.setTempId(tempId);
+
+            itineraryCacheRepository.save(tempId, response);
         }
-        log.info("Generating itinerary with context of {} POIs", contextPois.size());
-
-        String poiContextJson = serializePois(contextPois);
-
-        ItineraryResponse response = aiService.generateItinerary(request, poiContextJson);
-
-        enrichItineraryDetails(response);
-
-        response.setDestinationCities(request.getDestinationCities());
-
-        String tempId = UUID.randomUUID().toString();
-
-        response.setTempId(tempId);       // Set temp id for using redis cache
-
-        itineraryCacheRepository.save(tempId, response);
-
         return response;
     }
 
@@ -225,21 +205,6 @@ public class ItineraryServiceImpl implements ItineraryService {
 
     // --- HELPER METHODS ---
 
-    private record SimplePoi(long id, String name, String type, String address, Double lat, Double lng, Object hours) {}
-
-    private String serializePois(List<Poi> pois) {
-        List<SimplePoi> simpleList = pois.stream().map(p -> new SimplePoi(
-                p.getId(),
-                p.getName(),
-                p.getPoiType().toString(),
-                p.getAddress(),
-                p.getLatitude(),
-                p.getLongitude(),
-                p.getOpeningHour()
-        )).collect(Collectors.toList());
-        return gson.toJson(simpleList);
-    }
-
     private List<DayPlan> groupActivitiesByDate(List<ItineraryActivity> dbActivities) {
         if (dbActivities == null || dbActivities.isEmpty()) return new ArrayList<>();
 
@@ -264,54 +229,5 @@ public class ItineraryServiceImpl implements ItineraryService {
             days.add(dayPlan);
         }
         return days;
-    }
-
-    private void enrichItineraryDetails(ItineraryResponse response) {
-        if (response == null || response.getDays() == null) return;
-
-        Set<Long> poiIds = new HashSet<>();
-        for (DayPlan day : response.getDays()) {
-            if (day.getActivities() != null) {
-                for (ActivityDTO act : day.getActivities()) {
-                    if (act.getId() > 0) {
-                        poiIds.add(act.getId());
-                    }
-                }
-            }
-        }
-
-        if (poiIds.isEmpty()) return;
-
-        List<Poi> pois = poiRepository.findAllById(poiIds);
-
-        Map<Long, Poi> poiMap = pois.stream()
-                .collect(Collectors.toMap(Poi::getId, p -> p));
-
-        for (DayPlan day : response.getDays()) {
-            if (day.getActivities() != null) {
-                for (ActivityDTO act : day.getActivities()) {
-                    Poi realPoi = poiMap.get(act.getId());
-                    if (realPoi != null) {
-                        act.setTitle(realPoi.getName());
-                        act.setAddress(realPoi.getAddress());
-                        act.setLat(realPoi.getLatitude());
-                        act.setLng(realPoi.getLongitude());
-                        act.setPrice("0");
-                        if (realPoi.getMedias() != null && !realPoi.getMedias().isEmpty()) {
-                            act.setImage(realPoi.getMedias().get(0).getUrl());
-                        } else {
-                            act.setImage(null);
-                        }
-                    } else {
-                        if (act.getTitle() == null) act.setTitle("Hoạt động tự do");
-                        act.setAddress("N/A");
-                        act.setImage(null);
-                        act.setLat(0.0);
-                        act.setLng(0.0);
-                        act.setPrice("0");
-                    }
-                }
-            }
-        }
     }
 }

@@ -48,6 +48,25 @@ public class Itinerary extends AuditableEntity {
     @Column(precision = 12, scale = 2)
     private BigDecimal budget;
 
+    // Estimated budget that AI answers
+    @Column(name = "estimated_total_price", precision = 12, scale = 2)
+    private BigDecimal estimatedTotalPrice;
+
+    @Column(name = "estimated_transportation_price", precision = 12, scale = 2)
+    private BigDecimal estimatedTransportationPrice;
+
+    @Column(name = "estimated_activity_price", precision = 12, scale = 2)
+    private BigDecimal estimatedActivityPrice;
+
+    @Column(name = "estimated_food_and_drink_price", precision = 12, scale = 2)
+    private BigDecimal estimatedFoodAndDrinkPrice;
+
+    @Column(name = "estimated_accommodation_price", precision = 12, scale = 2)
+    private BigDecimal estimatedAccommodationPrice;
+
+    @Column(name = "estimated_currency", length = 10)
+    private String estimatedCurrency;
+
     @Column(name = "has_kids")
     private Boolean hasKids;
 
