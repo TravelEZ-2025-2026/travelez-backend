@@ -249,3 +249,5 @@ ALTER TABLE itinerary
     ADD COLUMN estimated_food_and_drink_price NUMERIC(12, 2),
     ADD COLUMN estimated_accommodation_price NUMERIC(12, 2),
     ADD COLUMN estimated_currency VARCHAR(10);
+
+ALTER TABLE place_of_interest ADD COLUMN description_vector vector(768);

@@ -36,4 +36,20 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
             @Param("queryVector") String queryVector,
             @Param("kLimit") int kLimit
     );
+
+    @Query(value = """
+            SELECT p.* FROM place_of_interest p 
+            WHERE p.system_status = 'ACTIVE' 
+              AND p.status = 'OPERATIONAL'
+              AND (:placeId IS NULL OR p.place_id = :placeId)
+              AND (cast(:poiType as text) IS NULL OR p.poi_type = cast(:poiType as poi_type_enum))
+            ORDER BY p.description_vector <=> cast(:embedding as vector) 
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Poi> findBySemanticSearch(
+            @Param("embedding") String embedding,
+            @Param("placeId") Long placeId,
+            @Param("poiType") String poiType,
+            @Param("limit") int limit
+    );
 }

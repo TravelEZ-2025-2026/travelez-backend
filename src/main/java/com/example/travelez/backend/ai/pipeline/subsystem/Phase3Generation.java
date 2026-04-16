@@ -31,13 +31,13 @@ public class Phase3Generation {
         List<Poi> poiPool = context.getRetrievedPois();
 
         if (poiPool == null || poiPool.isEmpty()) {
-            throw new ApiException(ResultCode.VALIDATION_FAILED, "Không tìm thấy địa điểm phù hợp cho yêu cầu này.");
+            throw new ApiException(ResultCode.VALIDATION_FAILED, "No suitable location found for this request.");
         }
 
         // 1. Tính toán số ngày
         long numDays = ChronoUnit.DAYS.between(reqData.getStartDate(), reqData.getEndDate()) + 1;
 
-        // 2. Format POI data đưa vào prompt (Giới hạn Top 120 để tránh vượt token LLM)
+        // 2. Format POI data đưa vào prompt
         int maxPoisForPrompt = Math.min(poiPool.size(), 120);
         List<Map<String, Object>> poisForLlm = poiPool.stream()
                 .limit(maxPoisForPrompt)
@@ -48,7 +48,8 @@ public class Phase3Generation {
                     map.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
                     map.put("address", p.getAddress() != null ? p.getAddress() : "");
                     map.put("rating", p.getRating() != null ? p.getRating() : 3.0);
-                    map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
+                    //map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
+                    map.put("description", p.getDescription() != null ? p.getDescription() : "");
 
                     if (p.getOpeningHour() != null) map.put("operating_hours", p.getOpeningHour());
                     return map;
@@ -73,6 +74,9 @@ public class Phase3Generation {
         log.debug("Sending prompt to Gemini...");
         try {
             String rawJsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+            // THÊM BƯỚC KHỬ NHIỄU Ở ĐÂY:
+            rawJsonResponse = cleanJsonResponse(rawJsonResponse);
+
             log.info("Phase 3 generated JSON successfully.");
             return rawJsonResponse;
         } catch (Exception e) {
@@ -156,5 +160,15 @@ public class Phase3Generation {
                 tripContextJson,
                 poisJson
         );
+    }
+
+    private String cleanJsonResponse(String raw) {
+        if (raw == null) return null;
+        int start = raw.indexOf('{');
+        int end = raw.lastIndexOf('}');
+        if (start != -1 && end != -1 && start < end) {
+            return raw.substring(start, end + 1);
+        }
+        return raw;
     }
 }

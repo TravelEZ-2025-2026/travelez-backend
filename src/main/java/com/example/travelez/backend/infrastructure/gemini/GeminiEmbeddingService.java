@@ -61,7 +61,7 @@ public class GeminiEmbeddingService {
 
         } catch (Exception e) {
             log.error("Failed to generate embeddings", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Lỗi tạo vector truy vấn");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Error creating query vector");
         }
     }
 }

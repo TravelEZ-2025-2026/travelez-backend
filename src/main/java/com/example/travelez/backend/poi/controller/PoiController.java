@@ -21,6 +21,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/pois")
 @RequiredArgsConstructor
@@ -71,4 +73,17 @@ public class PoiController {
         return BaseResponse.success(poiService.getPoiDetail(poiId), ResultCode.SUCCESS,
                 "Poi fetched successfully");
     }
+
+    @Operation(summary = "Semantic Search POIs", description = "Find POIs using AI similarity matching with optional filters")
+    @GetMapping("/semantic-search")
+    public ResponseEntity<BaseResponse<List<PoiBaseResponse>>> searchPoisSemantically(
+            @RequestParam String query,
+            @RequestParam(required = false) Long placeId,
+            @RequestParam(required = false) PoiType poiType,
+            @RequestParam(required = false, defaultValue = "10") Integer limit) {
+
+        List<PoiBaseResponse> responses = poiService.semanticSearchPoi(query, placeId, poiType, limit);
+        return BaseResponse.success(responses, ResultCode.SUCCESS, "Pois found semantically");
+    }
+
 }

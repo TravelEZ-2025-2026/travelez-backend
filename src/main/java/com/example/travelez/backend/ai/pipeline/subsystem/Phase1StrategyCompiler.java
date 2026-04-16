@@ -37,7 +37,7 @@ public class Phase1StrategyCompiler {
 
         } catch (Exception e) {
             log.error("Phase 1 failed to generate search queries.", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Lỗi phân tích hành vi người dùng bằng AI.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Error in analyzing user behavior with AI.");
         }
     }
 

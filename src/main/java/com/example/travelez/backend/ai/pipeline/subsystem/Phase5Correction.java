@@ -40,7 +40,7 @@ public class Phase5Correction {
         try {
             parsedDraft = gson.fromJson(rawLlm1Response, ItineraryResponse.class);
         } catch (Exception e) {
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Không thể đọc dữ liệu LLM1 để sửa lỗi.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Unable to read LLM1 data to fix the error.");
         }
 
         Set<Long> usedPoiIds = parsedDraft.getDays().stream()
@@ -58,7 +58,8 @@ public class Phase5Correction {
                     m.put("name", p.getName());
                     m.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
                     m.put("address", p.getAddress() != null ? p.getAddress() : "");
-                    m.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
+                    //m.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
+                    m.put("description", p.getDescription() != null ? p.getDescription() : "");
 
                     if (p.getOpeningHour() != null) m.put("operating_hours", p.getOpeningHour());
                     return m;
@@ -75,15 +76,17 @@ public class Phase5Correction {
                 gson.toJson(usedPoisInfo)
         );
 
-        // 4. Gọi LLM2 (dùng lại model FLASH, temp=0.0 cho chắc chắn)
+        // 4. Gọi LLM2
         try {
             log.info("Sending repair instructions to Gemini...");
             String fixedJson = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+            fixedJson = cleanJsonResponse(fixedJson);
+
             log.info("Phase 5 Correction JSON generated successfully.");
             return fixedJson;
         } catch (Exception e) {
             log.error("Failed to repair itinerary in Phase 5", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Không thể sửa lỗi AI lúc này.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Unable to fix AI error at this time.");
         }
     }
 
@@ -154,5 +157,15 @@ public class Phase5Correction {
             --- POI Reference (Use semantic_text to write better aiTips) ---
             %s
             """.formatted(hasKids, safeSpecialNotes, originalJson, feedbackText, usedPoisJson);
+    }
+
+    private String cleanJsonResponse(String raw) {
+        if (raw == null) return null;
+        int start = raw.indexOf('{');
+        int end = raw.lastIndexOf('}');
+        if (start != -1 && end != -1 && start < end) {
+            return raw.substring(start, end + 1);
+        }
+        return raw;
     }
 }

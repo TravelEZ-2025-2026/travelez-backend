@@ -28,7 +28,7 @@ spring:
     password: ${RABBITMQ_PASSWORD}
 
   profiles:
-    active: mock
+    active: dev
 
 google:
   client-id: ${GOOGLE_CLIENT_ID}
