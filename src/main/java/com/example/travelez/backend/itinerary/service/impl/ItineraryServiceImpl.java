@@ -77,8 +77,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Override
     @Transactional
     public Long saveItinerary(ItinerarySaveRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
+        UserPrinciple userPrinciple = getCurrentUser();
 
         User traveler = userRepository.findById(userPrinciple.getUserId())
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "User information not found" ));
@@ -134,41 +133,35 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Override
     @Transactional(readOnly = true)
     public CommonPage<ItinerarySummaryResponse> getItineraryList(Pageable pageable) {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
+        UserPrinciple currentUser = getCurrentUser();
 
-            Specification<Itinerary> spec = ItinerarySpecification.belongsToUser(currentUser.getUserId());
+        Specification<Itinerary> spec = ItinerarySpecification.belongsToUser(currentUser.getUserId());
 
-            Page<Itinerary> itineraries = itineraryRepository.findAll(spec, pageable);
+        Page<Itinerary> itineraries = itineraryRepository.findAll(spec, pageable);
 
-            List<ItinerarySummaryResponse> summaryResponses = itineraries.stream()
-                    .map(itineraryMapper::toSummaryResponse)
-                    .toList();
+        List<ItinerarySummaryResponse> summaryResponses = itineraries.stream()
+                .map(itineraryMapper::toSummaryResponse)
+                .toList();
 
-            return new CommonPage<>(
-                    summaryResponses,
-                    itineraries.getTotalPages(),
-                    itineraries.getTotalElements(),
-                    pageable.getPageSize(),
-                    itineraries.getNumber(),
-                    itineraries.isEmpty()
-            );
-        } catch (Exception e) {
-            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Error fetching itinerary list");
-        }
+        return new CommonPage<>(
+                summaryResponses,
+                itineraries.getTotalPages(),
+                itineraries.getTotalElements(),
+                pageable.getPageSize(),
+                itineraries.getNumber(),
+                itineraries.isEmpty()
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
     public ItineraryDetailResponse getItineraryDetail(Long itineraryId) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
+        UserPrinciple currentUser = getCurrentUser();
 
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
 
-        if (itinerary.getTraveler().getId() != currentUser.getUserId()) {
+        if (!Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId())) {
             throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to access this itinerary");
         }
 
@@ -185,13 +178,12 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Override
     @Transactional
     public void deleteItinerary(Long itineraryId) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserPrinciple currentUser = (UserPrinciple) authentication.getPrincipal();
+        UserPrinciple currentUser = getCurrentUser();
 
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
 
-        if (itinerary.getTraveler().getId() != currentUser.getUserId()) {
+        if (!Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId())) {
             throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to delete this itinerary");
         }
 
@@ -229,5 +221,13 @@ public class ItineraryServiceImpl implements ItineraryService {
             days.add(dayPlan);
         }
         return days;
+    }
+
+    private UserPrinciple getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new ApiException(ResultCode.UNAUTHORIZED, "You need to log in to perform this action.");
+        }
+        return (UserPrinciple) authentication.getPrincipal();
     }
 }
