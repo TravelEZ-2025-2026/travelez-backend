@@ -5,6 +5,7 @@ import com.example.travelez.backend.comment.dto.request.CommentUpdateRequest;
 import com.example.travelez.backend.comment.dto.response.CommentBaseResponse;
 import com.example.travelez.backend.comment.mapper.CommentMapper;
 import com.example.travelez.backend.comment.model.Comment;
+import com.example.travelez.backend.comment.permission.CommentPermissionChecker;
 import com.example.travelez.backend.comment.repository.CommentRepository;
 import com.example.travelez.backend.comment.service.CommentService;
 import com.example.travelez.backend.common.api.CommonPage;
@@ -13,14 +14,14 @@ import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.common.utils.SecurityUtils;
 import com.example.travelez.backend.infrastructure.filestorage.dto.UploadFileResult;
-import com.example.travelez.backend.media.mapper.MediaMapper;
-import com.example.travelez.backend.media.model.Media;
+import com.example.travelez.backend.media.dto.enums.MediaTarget;
 import com.example.travelez.backend.media.repository.MediaRepository;
 import com.example.travelez.backend.media.service.MediaService;
 import com.example.travelez.backend.posts.model.Posts;
-import com.example.travelez.backend.posts.model.enums.PostStatus;
+import com.example.travelez.backend.posts.permission.PostsPermissionChecker;
 import com.example.travelez.backend.posts.repository.PostsRepository;
-import com.example.travelez.backend.posts.service.PostsService;
+import com.example.travelez.backend.reaction.model.enums.ReactionTargetType;
+import com.example.travelez.backend.reaction.service.ReactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,22 +43,24 @@ import java.util.stream.Collectors;
 public class CommentServiceImpl implements CommentService {
     private final TransactionTemplate transactionTemplate;
 
+    private final PostsPermissionChecker postsPermissionChecker;
+    private final CommentPermissionChecker commentPermissionChecker;
+
     private final MediaService mediaService;
-    private final PostsService postService;
+    private final ReactionService reactionService;
 
     private final CommentRepository commentRepository;
     private final MediaRepository mediaRepository;
     private final PostsRepository postsRepository;
 
     private final CommentMapper commentMapper;
-    private final MediaMapper mediaMapper;
 
     @Override
     public void createComment(Long postId, CommentCreateRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
 //        tim bai post bang postId
         Posts post = postsRepository.findById(postId).orElseThrow(() -> new RuntimeException("Post not found"));
-        if (post == null || !postService.isUserCommentPost(userId, post)) {
+        if (post == null || !postsPermissionChecker.canUserInteractPost(userId, postId)) {
             Asserts.fail(ResultCode.FORBIDDEN, "User not allowed to comment on this post");
         }
         Comment parentComment = getParentComment(request.getParentId());
@@ -64,13 +69,9 @@ public class CommentServiceImpl implements CommentService {
             transactionTemplate.execute(status -> {
                 Comment comment = commentMapper.toComment(request, postId, userId);
                 comment.setParentComment(parentComment);
-                if (!uploadedFiles.isEmpty()) {
-                    List<Media> mediaEntities = uploadedFiles.stream().map(mediaMapper::toMedia).toList();
-                    List<Media> savedMedia = mediaRepository.saveAll(mediaEntities);
-                    comment.setMedias(savedMedia);
-                }
-                commentRepository.save(comment);
-                return null;
+                Comment savedComment = commentRepository.save(comment);
+                mediaService.attachMediasToEntity(uploadedFiles, MediaTarget.COMMENT, savedComment.getId());
+                return savedComment;
             });
         } catch (Exception e) {
             List<String> fileNames = uploadedFiles.stream().map(UploadFileResult::getCloudName).toList();
@@ -115,7 +116,7 @@ public class CommentServiceImpl implements CommentService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Comment not found"));
         Long userId = SecurityUtils.getCurrentUserId();
-        if (!isDeletedByUser(userId, comment)) {
+        if (!commentPermissionChecker.canDeleteComment(userId, comment)) {
             Asserts.fail(ResultCode.FORBIDDEN, "User not allowed to delete this comment");
         }
         List<Object[]> mediaData = mediaRepository.findAllInCommentTree(commentId);
@@ -141,31 +142,13 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public CommonPage<CommentBaseResponse> getCommentsByPostId(Long postId, Pageable pageable) {
         Page<Comment> comments = commentRepository.findAllByPostIdAndParentCommentNull(postId, pageable);
-        return processCommentPage(comments, pageable);
+        return getCommentPageResponse(comments, pageable);
     }
 
     @Override
     public CommonPage<CommentBaseResponse> getRepliesByCommentId(Long commentId, Pageable pageable) {
         Page<Comment> replies = commentRepository.findAllByParentCommentId(commentId, pageable);
-        return processCommentPage(replies, pageable);
-    }
-
-    @Override
-    public boolean isDeletedByUser(Long userId, Comment comment) {
-        if (userId == null) {
-            return false;
-        }
-        Posts posts = comment.getPost();
-        PostStatus status = posts.getStatus();
-        if (status == PostStatus.BANNED) {
-            return false;
-        }
-        boolean isPostOwner = posts.getUser().getId() == userId;
-        if (status == PostStatus.ARCHIVED || status == PostStatus.DRAFT) {
-            return isPostOwner;
-        }
-        boolean isCommentOwner = comment.getUser().getId() == userId;
-        return isPostOwner || isCommentOwner;
+        return getCommentPageResponse(replies, pageable);
     }
 
     private Comment getParentComment(Long parentId) {
@@ -181,20 +164,49 @@ public class CommentServiceImpl implements CommentService {
         return mediaService.uploadFilesParallel(files, path);
     }
 
-    private CommonPage<CommentBaseResponse> processCommentPage(Page<Comment> commentsPage, Pageable pageable) {
-        if (commentsPage.isEmpty()) {
-            return new CommonPage<>(List.of(), commentsPage.getTotalPages(), commentsPage.getTotalElements(), pageable.getPageSize(), commentsPage.getNumber(), true);
-        }
-        List<Long> parentIds = commentsPage.getContent().stream()
-                .map(Comment::getId)
-                .toList();
+    private CommonPage<CommentBaseResponse> getCommentPageResponse(Page<Comment> commentsPage, Pageable pageable) {
+        List<CommentBaseResponse> responses = processCommentPage(commentsPage.getContent());
+        return new CommonPage<>(responses, commentsPage.getTotalPages(), commentsPage.getTotalElements(), pageable.getPageSize(), commentsPage.getNumber(), commentsPage.isEmpty());
+    }
+
+    private List<CommentBaseResponse> processCommentPage(List<Comment> comments) {
+        if (comments.isEmpty()) return List.of();
+
+        List<Long> parentIds = comments.stream().map(Comment::getId).toList();
+        Long userId = SecurityUtils.getCurrentUserId();
+
+        CompletableFuture<Map<Long, Long>> countFuture = CompletableFuture.supplyAsync(() -> getCountRepliesForParents(parentIds));
+        CompletableFuture<Map<Long, Long>> reactionCountFuture = CompletableFuture.supplyAsync(() -> getCountReactionComments(parentIds));
+        CompletableFuture<Set<Long>> reactedFuture = CompletableFuture.supplyAsync(() -> getUserReactedCommentIds(userId, parentIds));
+        CompletableFuture.allOf(countFuture, reactionCountFuture, reactedFuture).join();
+
+        Map<Long, Long> countMap = countFuture.join();
+        Map<Long, Long> reactionCountMap = reactionCountFuture.join();
+        Set<Long> reactedIds = reactedFuture.join();
+
+        return comments.stream().map(comment -> {
+            Long childCommentCount = countMap.getOrDefault(comment.getId(), 0L);
+            Long reactionCount = reactionCountMap.getOrDefault(comment.getId(), 0L);
+            boolean isReacted = reactedIds.contains(comment.getId());
+            return commentMapper.toCommentBaseResponse(comment, childCommentCount, reactionCount, isReacted);
+        }).toList();
+    }
+
+    private Map<Long, Long> getCountRepliesForParents(List<Long> parentIds) {
+        if (parentIds.isEmpty()) return Map.of();
         List<Object[]> counts = commentRepository.countRepliesForParents(parentIds);
-        Map<Long, Long> countMap = counts.stream()
+        return counts.stream()
                 .collect(Collectors.toMap(
                         row -> (Long) row[0],
                         row -> (Long) row[1]
                 ));
-        List<CommentBaseResponse> responses = commentsPage.getContent().stream().map(comment -> commentMapper.toCommentBaseResponse(comment, countMap.getOrDefault(comment.getId(), null))).toList();
-        return new CommonPage<>(responses, commentsPage.getTotalPages(), commentsPage.getTotalElements(), pageable.getPageSize(), commentsPage.getNumber(), commentsPage.isEmpty());
+    }
+
+    private Map<Long, Long> getCountReactionComments(List<Long> commentIds) {
+        return reactionService.getReactionCounts(ReactionTargetType.COMMENT, commentIds);
+    }
+
+    private Set<Long> getUserReactedCommentIds(Long userId, List<Long> commentIds) {
+        return reactionService.getUserReactedTargetIds(ReactionTargetType.COMMENT, userId, commentIds);
     }
 }

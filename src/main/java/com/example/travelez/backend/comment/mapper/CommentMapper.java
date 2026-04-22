@@ -24,5 +24,7 @@ public interface CommentMapper {
     @Mapping(target = "parentCommentId", source = "comment.parentComment.id")
     @Mapping(target = "childCommentCount", source = "childCommentCount")
     @Mapping(target = "author", source = "comment.user")
-    CommentBaseResponse toCommentBaseResponse(Comment comment, Long childCommentCount);
+    @Mapping(target = "reactionCount", source = "reactionCount")
+    @Mapping(target = "isReactedByMe", source = "isReactedByMe")
+    CommentBaseResponse toCommentBaseResponse(Comment comment, Long childCommentCount, Long reactionCount, boolean isReactedByMe);
 }

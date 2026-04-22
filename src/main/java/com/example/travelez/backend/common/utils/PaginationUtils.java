@@ -12,5 +12,9 @@ public class PaginationUtils {
     public static Pageable getPageable(PaginationRequest request) {
         return PageRequest.of(request.getPage(), request.getSize(), request.getDirection(), request.getSortField());
     }
+
+    public static Pageable getPageable(int page, int size) {
+        return PageRequest.of(page, size);
+    }
 }
 
