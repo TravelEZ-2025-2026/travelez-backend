@@ -1,6 +1,9 @@
 package com.example.travelez.backend.users.dto.response;
 
-import com.example.travelez.backend.users.model.User.*;
+import com.example.travelez.backend.media.dto.response.MediaBaseResponse;
+import com.example.travelez.backend.users.model.enums.GenderType;
+import com.example.travelez.backend.users.model.enums.RoleType;
+import com.example.travelez.backend.users.model.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,7 +30,17 @@ public class UserDetailResponse {
 
     private UserStatus status;
 
-    private String avatar;
+    private MediaBaseResponse avatar;
+
+    private MediaBaseResponse cover;
+
+    private boolean isFollowedByMe;
+
+    private boolean isFollowingMe;
 
     private RoleType role;
+
+    private Long followerCount;
+
+    private Long followingCount;
 }

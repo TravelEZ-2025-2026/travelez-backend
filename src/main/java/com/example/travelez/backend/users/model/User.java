@@ -1,12 +1,14 @@
 package com.example.travelez.backend.users.model;
 
 import com.example.travelez.backend.common.model.AuditableEntity;
+import com.example.travelez.backend.media.model.Media;
+import com.example.travelez.backend.users.model.enums.AuthProvider;
+import com.example.travelez.backend.users.model.enums.GenderType;
+import com.example.travelez.backend.users.model.enums.RoleType;
+import com.example.travelez.backend.users.model.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.hibernate.annotations.JdbcType;
-import org.hibernate.dialect.PostgreSQLEnumJdbcType;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -47,9 +49,6 @@ public class User extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "avatar", columnDefinition = "TEXT")
-    private String avatar;
-
     @Column(name = "role", nullable = false, updatable = false, insertable = false)
     @Enumerated(EnumType.STRING)
     private RoleType role;
@@ -63,30 +62,15 @@ public class User extends AuditableEntity {
     @Column(name = "following_count", nullable = false)
     private Long followingCount;
 
-    @Column(name = "provider")
+    @Column(name = "auth_provider")
     @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    private AuthProvider provider;
+    private AuthProvider authProvider;
 
-    public enum AuthProvider {
-        GOOGLE,
-        LOCAL
-    }
+    @OneToOne
+    @JoinColumn(name = "avatar_id")
+    private Media avatar;
 
-    public enum GenderType {
-        MALE,
-        FEMALE,
-        OTHER
-    }
-
-    public enum RoleType {
-        TRAVELER,
-        PROVIDER,
-        ADMIN
-    }
-
-    public enum UserStatus {
-        ACTIVE,
-        BANNED
-    }
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cover_id")
+    private Media cover;
 }
