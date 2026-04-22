@@ -10,9 +10,9 @@ import java.util.List;
 
 @Data
 public class PostsUpdateRequest {
-    private String title;
+    // private String title;
 
-    private String content;
+    // private String content;
 
     @Enumerated(EnumType.STRING)
     private PostStatus status;

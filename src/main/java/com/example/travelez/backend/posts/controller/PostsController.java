@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,30 +38,19 @@ public class PostsController {
         return BaseResponse.success(null, ResultCode.CREATED, "Posts created successfully");
     }
 
-    @GetMapping("/feeds/friends")
+    @GetMapping
     public ResponseEntity<BaseResponse<CursorResponse<PostResponse>>> getAllPosts(@RequestParam(required = false, defaultValue = "4") Long size, @RequestParam(required = false) Long lastPostId) {
         CursorPostsRequest request = new CursorPostsRequest(size.intValue(), lastPostId);
-        CursorResponse<PostResponse> response = postsService.getFriendsPostsCursor(SecurityUtils.getCurrentUserId(), request);
-        return BaseResponse.success(response, ResultCode.SUCCESS, "Posts fetched successfully");
-    }
-
-    @GetMapping("/feeds/suggested")
-    public ResponseEntity<BaseResponse<CursorResponse<PostResponse>>> getSuggestedPosts(@RequestParam(required = false, defaultValue = "4") Long size, @RequestParam(required = false) Long lastPostId) {
-        CursorPostsRequest request = new CursorPostsRequest(size.intValue(), lastPostId);
-        CursorResponse<PostResponse> response = postsService.getSuggestedPostsCursor(SecurityUtils.getCurrentUserId(), request);
+        CursorResponse<PostResponse> response = postsService.getAllPosts(request);
         return BaseResponse.success(response, ResultCode.SUCCESS, "Posts fetched successfully");
     }
 
     @GetMapping("/search")
     public ResponseEntity<BaseResponse<CommonPage<PostResponse>>> getPosts(
-            @ParameterObject PostsSearchRequest searchRequest,
-            @RequestParam(required = false, defaultValue = "id") String sortField,
-            @RequestParam(required = false, defaultValue = "DESC") Sort.Direction sortDirection,
-            @RequestParam(required = false, defaultValue = "0") Integer page,
-            @RequestParam(required = false, defaultValue = "4") Integer size
+            @ParameterObject PostsSearchRequest searchRequest
     ) {
-        final PaginationRequest pageable = new PaginationRequest(page, size, sortField, sortDirection);
-        CommonPage<PostResponse> response = postsService.searchPost(searchRequest, PaginationUtils.getPageable(pageable));
+        Pageable pageable = PageRequest.of(searchRequest.getPage(), searchRequest.getSize());
+        CommonPage<PostResponse> response = postsService.searchPosts(searchRequest, pageable);
         return BaseResponse.success(response, ResultCode.SUCCESS, "Posts fetched successfully");
     }
 

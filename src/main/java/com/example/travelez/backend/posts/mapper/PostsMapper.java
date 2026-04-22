@@ -2,6 +2,7 @@ package com.example.travelez.backend.posts.mapper;
 
 import com.example.travelez.backend.media.mapper.MediaMapper;
 import com.example.travelez.backend.media.model.Media;
+import com.example.travelez.backend.poi.mapper.PoiMapper;
 import com.example.travelez.backend.posts.dto.request.PostsCreateRequest;
 import com.example.travelez.backend.posts.dto.request.PostsUpdateRequest;
 import com.example.travelez.backend.posts.dto.response.PostResponse;
@@ -15,11 +16,12 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {MediaMapper.class, UserMapper.class})
+@Mapper(componentModel = "spring", uses = {MediaMapper.class, UserMapper.class, PoiMapper.class})
 public interface PostsMapper {
 
     @Mapping(target = "user.id", source = "userId")
-    Posts toPosts(PostsCreateRequest request, Long userId);
+    @Mapping(target = "poi.id", source = "poiId")
+    Posts toPosts(PostsCreateRequest request, Long userId, Long poiId);
 
     @BeanMapping(nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
     void updatePostsFromRequest(PostsUpdateRequest request, @MappingTarget Posts posts);
@@ -27,10 +29,10 @@ public interface PostsMapper {
     @Mapping(target = "author", source = "posts.user")
     PostsDetailResponse toPostsDetailResponse(Posts posts, List<Media> medias, Long commentCount);
 
-
     @Mapping(target = "author", source = "posts.user")
-    @Mapping(target = "isFollowed", defaultValue = "false")
     @Mapping(target = "medias", source = "medias")
-    PostResponse toPostResponse(Posts posts, List<Media> medias, Long commentCount, boolean isFollowed);
-
+    @Mapping(target = "poiSummary", source = "posts.poi")
+    @Mapping(target = "reactionCount", source = "reactionCount")
+    @Mapping(target = "isReactedByMe", source = "isReactedByMe")
+    PostResponse toPostResponse(Posts posts, List<Media> medias, Long commentCount, Long reactionCount, boolean isReactedByMe);
 }
