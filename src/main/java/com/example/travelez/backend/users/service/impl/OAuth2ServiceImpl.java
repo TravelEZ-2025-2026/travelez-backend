@@ -8,6 +8,9 @@ import com.example.travelez.backend.users.dto.response.UserLoginResponse;
 import com.example.travelez.backend.users.model.Traveler;
 import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.model.UserOAthToken;
+import com.example.travelez.backend.users.model.enums.AuthProvider;
+import com.example.travelez.backend.users.model.enums.RoleType;
+import com.example.travelez.backend.users.model.enums.UserStatus;
 import com.example.travelez.backend.users.repository.TokenRepository;
 import com.example.travelez.backend.users.repository.UserRepository;
 import com.example.travelez.backend.users.service.OAuth2Service;
@@ -61,21 +64,21 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                         .username(email)
                         .email(email)
                         .fullName((String) payload.get("name"))
-                        .avatar((String) payload.get("picture"))
-                        .provider(User.AuthProvider.GOOGLE)
-                        .role(User.RoleType.TRAVELER)
-                        .status(User.UserStatus.ACTIVE)
+//                        .avatar((String) payload.get("picture"))
+                        .authProvider(AuthProvider.GOOGLE)
+                        .role(RoleType.TRAVELER)
+                        .status(UserStatus.ACTIVE)
                         .googleId(payload.getSubject())
                         .build();
                 return userRepository.save(newUser);
             });
 
             // Lưu REFRESH TOKEN vào database
-            UserOAthToken tokenEntity = tokenRepository.findByUserIdAndProvider(user.getId(), User.AuthProvider.GOOGLE)
+            UserOAthToken tokenEntity = tokenRepository.findByUserIdAndProvider(user.getId(), AuthProvider.GOOGLE)
                     .orElse(new UserOAthToken());
             tokenEntity.setUser(user);
             tokenEntity.setAccessToken(tokenResponse.getAccessToken());
-            tokenEntity.setProvider(User.AuthProvider.GOOGLE);
+            tokenEntity.setProvider(AuthProvider.GOOGLE);
             if (tokenResponse.getRefreshToken() != null) {
                 tokenEntity.setRefreshToken(tokenResponse.getRefreshToken());
             }

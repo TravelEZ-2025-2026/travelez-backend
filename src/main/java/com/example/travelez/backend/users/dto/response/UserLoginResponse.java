@@ -1,6 +1,6 @@
 package com.example.travelez.backend.users.dto.response;
 
-import com.example.travelez.backend.users.model.User;
+import com.example.travelez.backend.users.model.enums.RoleType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,5 +15,5 @@ public class UserLoginResponse {
     private String token;
 
     private Long userId;
-    private User.RoleType role;
+    private RoleType role;
 }

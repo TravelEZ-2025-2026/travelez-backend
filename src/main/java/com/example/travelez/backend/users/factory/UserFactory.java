@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
 import com.example.travelez.backend.users.model.User;
-import com.example.travelez.backend.users.model.User.RoleType;
+import com.example.travelez.backend.users.model.enums.RoleType;
 
 @Component
 public class UserFactory {
