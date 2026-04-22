@@ -1,6 +1,7 @@
 package com.example.travelez.backend.posts.dto.response;
 
 import com.example.travelez.backend.media.dto.response.MediaBaseResponse;
+import com.example.travelez.backend.poi.dto.response.PoiSummaryResponse;
 import com.example.travelez.backend.posts.model.enums.PostStatus;
 import com.example.travelez.backend.users.dto.response.UserSummaryResponse;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,9 @@ import java.util.List;
 public class PostResponse {
     private Long id;
     private String title;
+    private String topicTag;
     private String content;
+    private PoiSummaryResponse poiSummary;
     private PostStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -26,6 +29,9 @@ public class PostResponse {
     private UserSummaryResponse author;
 
     private Long commentCount;
+
+    private Long reactionCount;
+    private boolean isReactedByMe;
 
     private List<MediaBaseResponse> medias;
 

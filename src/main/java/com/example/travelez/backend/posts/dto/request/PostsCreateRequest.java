@@ -15,6 +15,10 @@ public class PostsCreateRequest {
 
     private String title;
 
+    private Long poiId;
+
+    private String topicTag;
+
     @NotBlank(message = "Content must not be blank")
     private String content;
 

@@ -1,5 +1,6 @@
 package com.example.travelez.backend.posts.service.impl;
 
+import com.example.travelez.backend.comment.repository.CommentRepository;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.CursorResponse;
 import com.example.travelez.backend.common.api.ResultCode;
@@ -7,36 +8,44 @@ import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.common.utils.SecurityUtils;
 import com.example.travelez.backend.infrastructure.filestorage.dto.UploadFileResult;
-import com.example.travelez.backend.media.mapper.MediaMapper;
+import com.example.travelez.backend.media.dto.enums.MediaTarget;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.media.repository.MediaRepository;
 import com.example.travelez.backend.media.service.MediaService;
+import com.example.travelez.backend.poi.model.enums.PoiStatus;
+import com.example.travelez.backend.poi.service.PoiService;
 import com.example.travelez.backend.posts.dto.request.CursorPostsRequest;
 import com.example.travelez.backend.posts.dto.request.PostsCreateRequest;
 import com.example.travelez.backend.posts.dto.request.PostsSearchRequest;
 import com.example.travelez.backend.posts.dto.request.PostsUpdateRequest;
 import com.example.travelez.backend.posts.dto.response.PostResponse;
+import com.example.travelez.backend.posts.dto.response.PostsCreatedPayload;
 import com.example.travelez.backend.posts.dto.response.PostsDetailResponse;
+import com.example.travelez.backend.posts.dto.response.PostsUpdatedPayload;
+import com.example.travelez.backend.posts.event.PostsCreatedEvent;
+import com.example.travelez.backend.posts.event.PostsDeleteEvent;
+import com.example.travelez.backend.posts.event.PostsUpdateEvent;
 import com.example.travelez.backend.posts.mapper.PostsMapper;
 import com.example.travelez.backend.posts.model.Posts;
 import com.example.travelez.backend.posts.model.enums.PostStatus;
+import com.example.travelez.backend.posts.permission.PostsPermissionChecker;
 import com.example.travelez.backend.posts.repository.PostsRepository;
 import com.example.travelez.backend.posts.repository.specification.PostsSpecification;
+import com.example.travelez.backend.posts.service.PostsAiService;
 import com.example.travelez.backend.posts.service.PostsService;
-import com.example.travelez.backend.security.component.UserPrinciple;
-import com.example.travelez.backend.users.model.User;
+import com.example.travelez.backend.reaction.model.enums.ReactionTargetType;
+import com.example.travelez.backend.reaction.service.ReactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,15 +53,22 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PostsServiceImpl implements PostsService {
 
+    private final ApplicationEventPublisher eventPublisher;
+
     private final TransactionTemplate transactionTemplate;
 
+    private final PostsPermissionChecker postsPermissionChecker;
+
     private final MediaService mediaService;
+    private final PoiService poiService;
+    private final PostsAiService postsAiService;
+    private final ReactionService reactionService;
 
     private final PostsRepository postsRepository;
+    private final CommentRepository commentRepository;
     private final MediaRepository mediaRepository;
 
     private final PostsMapper postsMapper;
-    private final MediaMapper mediaMapper;
 
     @Override
     public void createPost(PostsCreateRequest request) {
@@ -61,17 +77,28 @@ public class PostsServiceImpl implements PostsService {
 
 //        2. luu thong tin file và bài post vao database
         try {
-            transactionTemplate.execute(status -> {
-                Posts post = postsMapper.toPosts(request, SecurityUtils.getCurrentUserId());
-                post.setFolderId(UUID.fromString(folder_id));
-                if (!uploadedFiles.isEmpty()) {
-                    List<Media> mediaEntities = uploadedFiles.stream().map(mediaMapper::toMedia).toList();
-                    List<Media> savedMedia = mediaRepository.saveAll(mediaEntities);
-                    post.setMedias(savedMedia);
+            Posts result = transactionTemplate.execute(status -> {
+                if (request.getPoiId() != null) {
+                    boolean poiExists = poiService.existsByIdAndSystemStatus(request.getPoiId(), PoiStatus.ACTIVE);
+                    if (!poiExists) {
+                        throw new ApiException(ResultCode.NOT_FOUND, "Poi not found");
+                    }
                 }
-                postsRepository.save(post);
-                return null;
+                Posts post = postsMapper.toPosts(request, SecurityUtils.getCurrentUserId(), request.getPoiId());
+                post.setFolderId(UUID.fromString(folder_id));
+                Posts savedPost = postsRepository.save(post);
+                mediaService.attachMediasToEntity(uploadedFiles, MediaTarget.POST, savedPost.getId());
+                return savedPost;
             });
+
+            eventPublisher.publishEvent(new PostsCreatedEvent(PostsCreatedPayload.builder()
+                    .postId(result.getId())
+                    .title(result.getTitle())
+                    .content(result.getContent())
+                    .status(result.getStatus())
+                    .createdAt(result.getCreatedAt())
+                    .build()));
+
         } catch (Exception e) {
             List<String> fileNames = uploadedFiles.stream().map(UploadFileResult::getCloudName).toList();
             mediaService.cleanupFilesAsync(fileNames);
@@ -100,6 +127,10 @@ public class PostsServiceImpl implements PostsService {
                 postsRepository.save(post);
                 return null;
             });
+            eventPublisher.publishEvent(new PostsUpdateEvent(PostsUpdatedPayload.builder()
+                    .postId(post.getId())
+                    .status(post.getStatus())
+                    .build()));
         } catch (Exception e) {
             List<String> fileNames = uploadedFiles.stream().map(UploadFileResult::getCloudName).collect(Collectors.toList());
             mediaService.cleanupFilesAsync(fileNames);
@@ -127,69 +158,56 @@ public class PostsServiceImpl implements PostsService {
             return null;
         });
         mediaService.cleanupFilesAsync(fileNamesToDelete);
-    }
-
-    @Override
-    public boolean isUserCommentPost(Long userId, Posts posts) {
-        if (userId == null) {
-            return false;
-        }
-        PostStatus status = posts.getStatus();
-        if (status == PostStatus.BANNED || status == PostStatus.DRAFT) {
-            return false;
-        }
-        if (status == PostStatus.ARCHIVED) {
-//        only owner can comment
-            return posts.getUser().getId() == userId;
-        }
-//        public posts
-        return true;
+        eventPublisher.publishEvent(new PostsDeleteEvent(postId));
     }
 
     @Override
     public PostsDetailResponse getPostDetail(Long postId) {
         Posts post = postsRepository.findById(postId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Post not found"));
-        if (!canUserViewPost(post)) {
+        if (!postsPermissionChecker.canUserViewPost(post)) {
             throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to view this post");
         }
-//        Long commentCount = commentRepository.countByPostId(postId);
-        Long commentCount = 0L;
+        Long commentCount = commentRepository.countByPostId(postId);
         return postsMapper.toPostsDetailResponse(post, post.getMedias(), commentCount);
     }
 
     @Override
-    public CursorResponse<PostResponse> getFriendsPostsCursor(Long userId, CursorPostsRequest request) {
+    public CursorResponse<PostResponse> getAllPosts(CursorPostsRequest request) {
         Pageable limit = PageRequest.of(0, request.getSize());
         Slice<Posts> postsSlice;
         if (request.getLastPostId() == null) {
-            postsSlice = postsRepository.findFriendPostsFirstPage(userId, limit);
+            postsSlice = postsRepository.findAllPostsFirstPage(limit);
         } else {
-            postsSlice = postsRepository.findFriendPostsNextPage(userId, request.getLastPostId(), limit);
+            postsSlice = postsRepository.findAllPostsNextPage(request.getLastPostId(), limit);
         }
         return getPostsCursorResponse(postsSlice);
     }
 
     @Override
-    public CursorResponse<PostResponse> getSuggestedPostsCursor(Long userId, CursorPostsRequest request) {
-        Pageable limit = PageRequest.of(0, request.getSize());
-        Slice<Posts> postsSlice;
-        if (request.getLastPostId() == null) {
-            postsSlice = postsRepository.findSuggestPostsFirstPage(userId, limit);
-        } else {
-            postsSlice = postsRepository.findSuggestedPostsNextPage(userId, request.getLastPostId(), limit);
-        }
-        return getPostsCursorResponse(postsSlice);
-    }
+    public CommonPage<PostResponse> searchPosts(PostsSearchRequest searchRequest, Pageable pageable) {
+        List<Long> matchedPostIds = postsAiService.searchWithPagination(searchRequest, pageable);
 
-    @Override
-    public CommonPage<PostResponse> searchPost(PostsSearchRequest searchRequest, Pageable pageable) {
-        List<Specification<Posts>> specs = new ArrayList<>();
-        specs.add(PostsSpecification.filterByKeyword(searchRequest.getKeyword()));
-        specs.add(PostsSpecification.filterByDateRange(searchRequest.getFromDate(), searchRequest.getToDate()));
-        specs.add(PostsSpecification.filterByStatus(List.of(PostStatus.PUBLISHED)));
-        Page<Posts> page = postsRepository.findAll(Specification.allOf(specs), pageable);
-        return getPostsPageResponse(page, pageable);
+        if (matchedPostIds.isEmpty()) {
+            return CommonPage.empty();
+        }
+
+        int limit = pageable.getPageSize();
+        int offset = pageable.getPageNumber() * limit;
+        List<Posts> posts = postsRepository.findAllById(matchedPostIds);
+        Map<Long, Posts> postMap = posts.stream()
+                .collect(Collectors.toMap(Posts::getId, post -> post));
+
+        List<Posts> sortedPosts = matchedPostIds.stream()
+                .map(postMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        boolean hasNext = matchedPostIds.size() == searchRequest.getSize();
+
+        Page<Posts> pageResult = new PageImpl<>(sortedPosts, pageable, hasNext ? offset + limit + 1 : offset + sortedPosts.size());
+
+        return getPostsPageResponse(pageResult, pageable);
     }
 
     @Override
@@ -200,54 +218,68 @@ public class PostsServiceImpl implements PostsService {
         if (!isOwner) {
             specs.add(PostsSpecification.filterByStatus(List.of(PostStatus.PUBLISHED)));
         } else {
-            specs.add(PostsSpecification.filterByStatus(List.of(PostStatus.PUBLISHED, PostStatus.ARCHIVED, PostStatus.DRAFT)));
+            specs.add(PostsSpecification.filterByStatus(List.of(PostStatus.PUBLISHED, PostStatus.ARCHIVED)));
         }
         Page<Posts> page = postsRepository.findAll(Specification.allOf(specs), pageable);
         return getPostsPageResponse(page, pageable);
-    }
-
-    private boolean canUserViewPost(Posts post) {
-        UserPrinciple user = SecurityUtils.getUserPrinciple();
-        boolean isAdmin = user != null && user.getRole().equals(User.RoleType.ADMIN.name());
-        if (isAdmin) return true;
-        boolean isOwner = user != null && post.getUser().getId() == user.getUserId();
-        if (post.getStatus() == PostStatus.ARCHIVED || post.getStatus() == PostStatus.BANNED || post.getStatus() == PostStatus.DRAFT) {
-            return isOwner;
-        }
-        return true;
     }
 
     private List<UploadFileResult> uploadFile(String folder_id, List<MultipartFile> files) {
         return mediaService.uploadFilesParallel(files, "posts/" + folder_id + "/");
     }
 
-//    private Map<Long, Long> getCountCommentPosts(List<Long> postIds) {
-//        if (postIds.isEmpty()) return Map.of();
-//        List<Object[]> commentCounts = commentRepository.countByPostIds(postIds);
-//        return commentCounts.stream().collect(Collectors.toMap(
-//                row -> (Long) row[0],
-//                row -> (Long) row[1]
-//        ));
-//    }
-
     private CursorResponse<PostResponse> getPostsCursorResponse(Slice<Posts> postsSlice) {
-        List<Long> postIds = postsSlice.getContent().stream().map(Posts::getId).toList();
-        Map<Long, List<Media>> mediaMap = getMapMediaPostIds(postIds);
-//        Map<Long, Long> countMap = getCountCommentPosts(postIds);
-        Map<Long, Long> countMap = Map.of();
-        List<PostResponse> posts = postsSlice.getContent().stream().map(post -> postsMapper.toPostResponse(post, mediaMap.getOrDefault(post.getId(), List.of()), countMap.getOrDefault(post.getId(), 0L), true)).toList();
+        List<PostResponse> posts = getPostResponses(postsSlice.getContent());
         Long lastPostId = postsSlice.isEmpty() ? null : posts.getLast().getId();
         String nextCursor = !postsSlice.hasNext() ? null : lastPostId.toString();
         return new CursorResponse<>(posts, nextCursor, postsSlice.hasNext());
     }
 
     private CommonPage<PostResponse> getPostsPageResponse(Page<Posts> page, Pageable pageable) {
-        List<Long> postIds = page.getContent().stream().map(Posts::getId).toList();
-        Map<Long, List<Media>> mediaMap = getMapMediaPostIds(postIds);
-//        Map<Long, Long> countMap = getCountCommentPosts(postIds);
-        Map<Long, Long> countMap = Map.of();
-        List<PostResponse> posts = page.getContent().stream().map(post -> postsMapper.toPostResponse(post, mediaMap.getOrDefault(post.getId(), List.of()), countMap.getOrDefault(post.getId(), 0L), true)).toList();
+        List<PostResponse> posts = getPostResponses(page.getContent());
         return new CommonPage<>(posts, page.getTotalPages(), page.getTotalElements(), pageable.getPageSize(), page.getNumber(), page.isEmpty());
+    }
+
+    private List<PostResponse> getPostResponses(List<Posts> posts) {
+        if (posts.isEmpty()) return List.of();
+        List<Long> postIds = posts.stream().map(Posts::getId).toList();
+        Long userId = SecurityUtils.getCurrentUserId();
+
+        CompletableFuture<Map<Long, List<Media>>> mediaFuture = CompletableFuture.supplyAsync(() -> getMapMediaPostIds(postIds));
+        CompletableFuture<Map<Long, Long>> countFuture = CompletableFuture.supplyAsync(() -> getCountCommentPosts(postIds));
+        CompletableFuture<Map<Long, Long>> reactionFuture = CompletableFuture.supplyAsync(() -> getCountReactionPosts(postIds));
+        CompletableFuture<Set<Long>> reactedFuture = CompletableFuture.supplyAsync(() -> getUserReactedPostIds(userId, postIds));
+        CompletableFuture.allOf(mediaFuture, countFuture, reactionFuture, reactedFuture).join();
+
+        Map<Long, List<Media>> mediaMap = mediaFuture.join();
+        Map<Long, Long> countMap = countFuture.join();
+        Map<Long, Long> reactionMap = reactionFuture.join();
+        Set<Long> reactedIds = reactedFuture.join();
+
+        return posts.stream().map(post -> {
+            List<Media> mediaList = mediaMap.getOrDefault(post.getId(), List.of());
+            Long commentCount = countMap.getOrDefault(post.getId(), 0L);
+            Long reactionCount = reactionMap.getOrDefault(post.getId(), 0L);
+            boolean isReacted = reactedIds.contains(post.getId());
+            return postsMapper.toPostResponse(post, mediaList, commentCount, reactionCount, isReacted);
+        }).toList();
+    }
+
+    private Map<Long, Long> getCountCommentPosts(List<Long> postIds) {
+        if (postIds.isEmpty()) return Map.of();
+        List<Object[]> commentCounts = commentRepository.countByPostIds(postIds);
+        return commentCounts.stream().collect(Collectors.toMap(
+                row -> (Long) row[0],
+                row -> (Long) row[1]
+        ));
+    }
+
+    private Map<Long, Long> getCountReactionPosts(List<Long> postIds) {
+        return reactionService.getReactionCounts(ReactionTargetType.POST, postIds);
+    }
+
+    private Set<Long> getUserReactedPostIds(Long userId, List<Long> postIds) {
+        return reactionService.getUserReactedTargetIds(ReactionTargetType.POST, userId, postIds);
     }
 
     private Map<Long, List<Media>> getMapMediaPostIds(List<Long> postIds) {
@@ -255,8 +287,6 @@ public class PostsServiceImpl implements PostsService {
         List<Object[]> mediaPost = mediaRepository.findAllByPostIds(postIds);
         return mediaService.groupMediaByParentId(mediaPost);
     }
-
-
 }
 
 

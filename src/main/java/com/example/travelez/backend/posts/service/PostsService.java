@@ -8,7 +8,6 @@ import com.example.travelez.backend.posts.dto.request.PostsSearchRequest;
 import com.example.travelez.backend.posts.dto.request.PostsUpdateRequest;
 import com.example.travelez.backend.posts.dto.response.PostResponse;
 import com.example.travelez.backend.posts.dto.response.PostsDetailResponse;
-import com.example.travelez.backend.posts.model.Posts;
 import org.springframework.data.domain.Pageable;
 
 public interface PostsService {
@@ -18,16 +17,11 @@ public interface PostsService {
 
     void deletePost(Long postId);
 
-    boolean isUserCommentPost(Long userId, Posts posts);
-
     PostsDetailResponse getPostDetail(Long postId);
 
-    CursorResponse<PostResponse> getFriendsPostsCursor(Long userId, CursorPostsRequest request);
+    CursorResponse<PostResponse> getAllPosts(CursorPostsRequest request);
 
-    CursorResponse<PostResponse> getSuggestedPostsCursor(Long userId, CursorPostsRequest request);
-
-    CommonPage<PostResponse> searchPost(PostsSearchRequest searchRequest, Pageable pageable);
+    CommonPage<PostResponse> searchPosts(PostsSearchRequest searchRequest, Pageable pageable);
 
     CommonPage<PostResponse> getUserPosts(Long userId, Pageable pageable);
-
 }

@@ -4,7 +4,6 @@ import lombok.Getter;
 
 @Getter
 public enum PostStatus {
-    DRAFT,
     PUBLISHED,
     ARCHIVED,
     BANNED
