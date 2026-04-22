@@ -4,6 +4,7 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
+import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.media.repository.MediaRepository;
 import com.example.travelez.backend.media.service.MediaService;
@@ -15,6 +16,7 @@ import com.example.travelez.backend.poi.model.Place;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.model.enums.PlaceStatus;
 import com.example.travelez.backend.poi.model.enums.PoiStatus;
+import com.example.travelez.backend.poi.model.enums.PoiType;
 import com.example.travelez.backend.poi.repository.PoiRepository;
 import com.example.travelez.backend.poi.repository.specification.PoiSpecification;
 import com.example.travelez.backend.poi.service.PlaceService;
@@ -27,10 +29,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +40,7 @@ public class PoiServiceImpl implements PoiService {
     private final PoiMapper poiMapper;
     private final PlaceService placeService;
     private final MediaService mediaService;
+    private final GeminiEmbeddingService geminiService;
 
     // service public
     public CommonPage<PoiBaseResponse> findAllPoi(PoiFilterRequest request, Pageable pageable) {
@@ -94,4 +94,33 @@ public class PoiServiceImpl implements PoiService {
 
         return pois;
     }
+
+    public List<PoiBaseResponse> semanticSearchPoi(String query, Long placeId, PoiType poiType, int limit) {
+        List<float[]> embeddings = geminiService.embedTexts(List.of(query));
+
+        if (embeddings == null || embeddings.isEmpty() || embeddings.get(0).length == 0) {
+            log.warn("Cannot generate vector for semantic search query: {}", query);
+            return List.of();
+        }
+
+        float[] vectorRaw = embeddings.get(0);
+        String vectorString = Arrays.toString(vectorRaw);
+
+        String poiTypeStr = (poiType != null) ? poiType.name() : null;
+
+        List<Poi> pois = poiRepository.findBySemanticSearch(vectorString, placeId, poiTypeStr, limit);
+
+        if (pois.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> poiIds = pois.stream().map(Poi::getId).toList();
+        List<Object[]> mediaData = poiRepository.findAllMediasByPoiIds(poiIds);
+        Map<Long, List<Media>> mediaMap = mediaService.groupMediaByParentId(mediaData);
+
+        return pois.stream()
+                .map(poi -> poiMapper.toPoiBaseResponse(poi, mediaMap.getOrDefault(poi.getId(), List.of())))
+                .toList();
+    }
+
 }

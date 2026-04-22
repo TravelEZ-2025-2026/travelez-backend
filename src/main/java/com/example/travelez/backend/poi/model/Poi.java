@@ -89,6 +89,9 @@ public class Poi extends AuditableEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "semantic_text", columnDefinition = "TEXT")
+    private String semanticText;
+
     @Column(name = "google_place_id", unique = true)
     private String googlePlaceId;
 

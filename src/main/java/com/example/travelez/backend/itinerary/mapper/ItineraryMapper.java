@@ -30,6 +30,12 @@ public interface ItineraryMapper {
     @Mapping(target = "hasPets", source = "meta.hasPets")
     @Mapping(target = "companion", source = "meta.companion")
     @Mapping(target = "userNotes", source = "meta.specialNotes")
+    @Mapping(target = "estimatedTotalPrice", source = "aiData.estimatedBudget.total")
+    @Mapping(target = "estimatedTransportationPrice", source = "aiData.estimatedBudget.transportation")
+    @Mapping(target = "estimatedActivityPrice", source = "aiData.estimatedBudget.activity")
+    @Mapping(target = "estimatedFoodAndDrinkPrice", source = "aiData.estimatedBudget.foodAndDrink")
+    @Mapping(target = "estimatedAccommodationPrice", source = "aiData.estimatedBudget.accommodation")
+    @Mapping(target = "estimatedCurrency", source = "aiData.estimatedBudget.currency")
     Itinerary createItineraryEntity(ItineraryCreationRequest meta, ItineraryResponse aiData, User traveler);
 
     @Mapping(target = "id", ignore = true)
@@ -48,6 +54,12 @@ public interface ItineraryMapper {
     @Mapping(source = "title", target = "tripTitle")
     @Mapping(source = "objectives", target = "reasoningSummary")
     @Mapping(source = "userNotes", target = "specialNotes")
+    @Mapping(target = "estimatedBudget.total", source = "estimatedTotalPrice")
+    @Mapping(target = "estimatedBudget.transportation", source = "estimatedTransportationPrice")
+    @Mapping(target = "estimatedBudget.activity", source = "estimatedActivityPrice")
+    @Mapping(target = "estimatedBudget.foodAndDrink", source = "estimatedFoodAndDrinkPrice")
+    @Mapping(target = "estimatedBudget.accommodation", source = "estimatedAccommodationPrice")
+    @Mapping(target = "estimatedBudget.currency", source = "estimatedCurrency")
     @Mapping(target = "days", ignore = true)
     ItineraryDetailResponse toDetailResponseHeader(Itinerary itinerary);
 
@@ -64,7 +76,7 @@ public interface ItineraryMapper {
     @Mapping(target = "aiTip", source = "note")
     @Mapping(target = "startTime", source = "startTime")
     @Mapping(target = "endTime", source = "endTime")
-    @Mapping(target = "price", expression = "java(act.getActivityCost() != null ? act.getActivityCost().toString() : \"0\")")
+    @Mapping(target = "price", expression = "java(act.getActivityCost() != null ? act.getActivityCost() : java.math.BigDecimal.ZERO)")
     ActivityDTO toActivityDTO(ItineraryActivity act);
 
     @AfterMapping
