@@ -21,7 +21,8 @@ import com.example.travelez.backend.review.repository.ReviewRepository;
 import com.example.travelez.backend.review.repository.specification.ReviewSpecification;
 import com.example.travelez.backend.review.service.ReviewService;
 import com.example.travelez.backend.security.component.UserPrinciple;
-import com.example.travelez.backend.users.model.User;
+import com.example.travelez.backend.users.model.enums.RoleType;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -121,7 +122,7 @@ public class ReviewServiceImpl implements ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Review not found"));
 
-        boolean isAdmin = userPrinciple.getRole().equals(User.RoleType.ADMIN.name());
+        boolean isAdmin = userPrinciple.getRole().equals(RoleType.ADMIN.name());
         boolean isOwner = review.getTraveler() != null
                 && review.getTraveler().getId() == userPrinciple.getUserId();
 

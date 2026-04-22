@@ -52,4 +52,6 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
             @Param("poiType") String poiType,
             @Param("limit") int limit
     );
+
+    boolean existsByIdAndSystemStatus(Long id, PoiStatus systemStatus);
 }

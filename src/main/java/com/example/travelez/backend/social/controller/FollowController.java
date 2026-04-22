@@ -17,13 +17,13 @@ public class FollowController {
 
     @PostMapping("/{targetUserId}/follow")
     public ResponseEntity<BaseResponse<Void>> followUser(@PathVariable Long targetUserId) {
-//        followService.followUser(targetUserId);
+        followService.followUser(targetUserId);
         return BaseResponse.success(null, ResultCode.SUCCESS, "User followed successfully");
     }
 
     @DeleteMapping("/{targetUserId}/unfollow")
     public ResponseEntity<BaseResponse<Void>> unfollowUser(@PathVariable Long targetUserId) {
-//        followService.unfollowUser(targetUserId);
+        followService.unfollowUser(targetUserId);
         return BaseResponse.success(null, ResultCode.SUCCESS, "User unfollowed successfully");
     }
 }

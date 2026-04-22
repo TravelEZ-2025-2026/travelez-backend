@@ -123,4 +123,9 @@ public class PoiServiceImpl implements PoiService {
                 .toList();
     }
 
+    @Override
+    public boolean existsByIdAndSystemStatus(long poiId, PoiStatus systemStatus) {
+        return poiRepository.existsByIdAndSystemStatus(poiId, systemStatus);
+    }
+
 }

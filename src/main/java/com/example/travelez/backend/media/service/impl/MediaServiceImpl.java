@@ -6,6 +6,7 @@ import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.common.utils.FileUtils;
 import com.example.travelez.backend.infrastructure.filestorage.FileStorageService;
 import com.example.travelez.backend.infrastructure.filestorage.dto.UploadFileResult;
+import com.example.travelez.backend.media.dto.enums.MediaTarget;
 import com.example.travelez.backend.media.mapper.MediaMapper;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.media.model.enums.MediaType;
@@ -88,6 +89,11 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public UploadFileResult uploadFile(MultipartFile file, String destinationPath) {
+        return fileStorageService.uploadFile(file, destinationPath, MediaType.IMAGE);
+    }
+
+    @Override
     @Async
     public void cleanupFilesAsync(List<String> filesToDelete) {
         if (filesToDelete == null || filesToDelete.isEmpty())
@@ -122,5 +128,16 @@ public class MediaServiceImpl implements MediaService {
             return Map.of();
         }
         return rawData.stream().collect(Collectors.groupingBy(row -> (Long) row[0], Collectors.mapping(row -> (Media) row[1], Collectors.toList())));
+    }
+
+    @Override
+    public List<Media> attachMediasToEntity(List<UploadFileResult> uploadFiles, MediaTarget target, Long entityId) {
+        if (uploadFiles == null || uploadFiles.isEmpty()) {
+            return null;
+        }
+        List<Media> mediaEntities = uploadFiles.stream().map(mediaMapper::toMedia).toList();
+        List<Media> savedMedia = mediaRepository.batchInsertMedias(mediaEntities);
+        mediaRepository.batchInsertMediaRelation(target, entityId, savedMedia.stream().map(Media::getId).toList());
+        return savedMedia;
     }
 }

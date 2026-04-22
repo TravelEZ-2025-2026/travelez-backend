@@ -26,4 +26,6 @@ public interface PoiService {
 
     List<PoiBaseResponse> semanticSearchPoi(String query, Long placeId, PoiType poiType, int limit);
 
+    public boolean existsByIdAndSystemStatus(long poiId, PoiStatus systemStatus);
+
 }
