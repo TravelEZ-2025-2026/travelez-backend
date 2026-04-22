@@ -4,6 +4,7 @@ import com.example.travelez.backend.media.mapper.MediaMapper;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.poi.dto.response.PoiBaseResponse;
 import com.example.travelez.backend.poi.dto.response.PoiDetailResponse;
+import com.example.travelez.backend.poi.dto.response.PoiSummaryResponse;
 import com.example.travelez.backend.poi.model.Poi;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -17,4 +18,6 @@ public interface PoiMapper {
 
     @Mapping(target = "medias", source = "medias")
     PoiBaseResponse toPoiBaseResponse(Poi poi, List<Media> medias);
+
+    PoiSummaryResponse toPoiSummaryResponse(Poi poi);
 }
