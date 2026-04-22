@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface MediaRepository extends JpaRepository<Media, Long> {
+public interface MediaRepository extends JpaRepository<Media, Long>, MediaRepositoryCustom {
 
     @Query("SELECT p.id, m FROM Posts p JOIN p.medias m WHERE p.id IN :postIds")
     List<Object[]> findAllByPostIds(@Param("postIds") List<Long> postIds);
@@ -47,4 +47,6 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
             """, nativeQuery = true)
     List<Media> findAllByPostId(@Param("postId") Long postId);
 
+    @Query("SELECT msg.id, m FROM Message msg JOIN msg.medias m WHERE msg.id IN :messageIds")
+    List<Object[]> findAllByMessageIds(@Param("messageIds") List<Long> messageIds);
 }
