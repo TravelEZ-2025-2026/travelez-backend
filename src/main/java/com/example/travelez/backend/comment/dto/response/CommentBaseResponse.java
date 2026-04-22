@@ -23,4 +23,6 @@ public class CommentBaseResponse {
     private LocalDateTime createdAt;
     private List<MediaBaseResponse> medias;
     private Long childCommentCount;
+    private boolean isReactedByMe;
+    private Long reactionCount;
 }

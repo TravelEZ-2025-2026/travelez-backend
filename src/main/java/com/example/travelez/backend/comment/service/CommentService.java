@@ -3,7 +3,6 @@ package com.example.travelez.backend.comment.service;
 import com.example.travelez.backend.comment.dto.request.CommentCreateRequest;
 import com.example.travelez.backend.comment.dto.request.CommentUpdateRequest;
 import com.example.travelez.backend.comment.dto.response.CommentBaseResponse;
-import com.example.travelez.backend.comment.model.Comment;
 import com.example.travelez.backend.common.api.CommonPage;
 import org.springframework.data.domain.Pageable;
 
@@ -18,7 +17,4 @@ public interface CommentService {
     CommonPage<CommentBaseResponse> getCommentsByPostId(Long postId, Pageable pageable);
 
     CommonPage<CommentBaseResponse> getRepliesByCommentId(Long commentId, Pageable pageable);
-
-    boolean isDeletedByUser(Long userId, Comment comment);
-
 }

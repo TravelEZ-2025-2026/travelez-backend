@@ -27,4 +27,8 @@ public class CommonPage<T> {
         this.page = page;
         this.empty = empty;
     }
+
+    public static <T> CommonPage<T> empty() {
+        return new CommonPage<>(List.of(), 0, 0L, 0, 0, true);
+    }
 }

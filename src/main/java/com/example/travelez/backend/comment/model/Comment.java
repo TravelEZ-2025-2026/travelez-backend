@@ -5,10 +5,7 @@ import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.posts.model.Posts;
 import com.example.travelez.backend.users.model.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -21,6 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @SQLRestriction("deleted_at IS NULL")
+@Builder
 public class Comment extends AuditableEntity {
 
     @Id

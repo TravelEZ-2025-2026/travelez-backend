@@ -15,6 +15,11 @@ import java.util.Optional;
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     Optional<Comment> findByIdAndUserId(Long commentId, Long userId);
 
+    Long countByPostId(Long postId);
+
+    @Query("SELECT c.post.id, COUNT(c) FROM Comment c WHERE c.post.id in :ids AND c.deletedAt IS NULL GROUP BY c.post.id")
+    List<Object[]> countByPostIds(List<Long> ids);
+
     @EntityGraph(attributePaths = {"user"})
     Page<Comment> findAllByPostIdAndParentCommentNull(Long postId, Pageable pageable);
 
@@ -29,4 +34,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM comment WHERE id = :commentId", nativeQuery = true)
     void deleteCommentById(Long commentId);
+
+    @EntityGraph(attributePaths = {"post"})
+    @Query("SELECT c FROM Comment c JOIN FETCH c.post WHERE c.id = :commentId AND c.deletedAt IS NULL")
+    Optional<Comment> findByIdWithPost(Long commentId);
 }
