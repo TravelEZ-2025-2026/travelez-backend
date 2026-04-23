@@ -46,6 +46,15 @@ public class PoiSpecification {
         };
     }
 
+    public static Specification<Poi> filterByGreaterThanRating(Double rating) {
+        return (root, query, criteriaBuilder) -> {
+            if (rating == null) {
+                return null;
+            }
+            return criteriaBuilder.greaterThanOrEqualTo(root.get("rating"), rating);
+        };
+    }
+
     public static Specification<Poi> filterByPlaceId(Long placeId) {
         return (root, query, criteriaBuilder) -> {
             if (placeId == null) {

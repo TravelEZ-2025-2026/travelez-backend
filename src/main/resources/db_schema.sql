@@ -113,6 +113,7 @@ CREATE TABLE place_of_interest (
     status place_status_enum NOT NULL DEFAULT 'OPERATIONAL',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
     google_maps_url TEXT,
     description TEXT,
     google_place_id VARCHAR(255) UNIQUE,
