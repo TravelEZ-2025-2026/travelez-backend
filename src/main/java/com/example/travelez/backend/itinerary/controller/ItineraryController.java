@@ -6,6 +6,7 @@ import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.dto.PaginationRequest;
 import com.example.travelez.backend.common.utils.PaginationUtils;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/itineraries")
 @RequiredArgsConstructor
-@Tag(name= "Itinerary", description = "Itinerary endpoints")
+@Tag(name= "Itinerary - M1", description = "Itinerary endpoints")
 public class ItineraryController {
 
     private final ItineraryService itineraryService;
@@ -73,8 +74,11 @@ public class ItineraryController {
     }
 
     @PostMapping("/replan")
-    public ResponseEntity<BaseResponse<ItineraryResponse>> replanItinerary(@Valid @RequestBody ItinerarySaveRequest request) {
-        ItineraryResponse response = itineraryService.replanItinerary(request);
+    public ResponseEntity<BaseResponse<ItineraryResponse>> replanItinerary(
+            @Valid @RequestBody ItineraryReplanRequest request) {
+
+        ItineraryResponse response = itineraryService.replanSmartItinerary(request);
+
         return BaseResponse.success(response, ResultCode.SUCCESS, "Itinerary replanned successfully");
     }
 

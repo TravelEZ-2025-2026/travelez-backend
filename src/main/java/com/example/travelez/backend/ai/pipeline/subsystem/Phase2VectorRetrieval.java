@@ -2,6 +2,7 @@ package com.example.travelez.backend.ai.pipeline.subsystem;
 
 import com.example.travelez.backend.ai.pipeline.model.SemanticQueryMap;
 import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.repository.PoiRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -62,5 +64,18 @@ public class Phase2VectorRetrieval {
 
         log.info("Total balanced POIs retrieved: {}", allBalancedResults.size());
         return allBalancedResults;
+    }
+
+    public List<Poi> retrieveForReplan(ItineraryReplanRequest request, SemanticQueryMap queryMap) {
+        List<Poi> candidates = retrieveMatchingPois(queryMap);
+
+        if (request.getRejectedPoiIds() != null && !request.getRejectedPoiIds().isEmpty()) {
+            candidates = candidates.stream()
+                    .filter(poi -> !request.getRejectedPoiIds().contains(poi.getId()))
+                    .collect(Collectors.toList());
+            log.info("Phase 2 (Replan): Filtered out {} rejected POIs.", request.getRejectedPoiIds().size());
+        }
+
+        return candidates;
     }
 }

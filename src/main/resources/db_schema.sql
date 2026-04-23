@@ -124,8 +124,8 @@ CREATE TABLE place_of_interest (
     price_max BIGINT,
     place_id BIGINT REFERENCES place(id) ON DELETE SET NULL,
     ward_id BIGINT REFERENCES ward(id) ON DELETE SET NULL,
-    semantic_text TEXT,              
-    gemini_vector vector(768),        
+    semantic_text TEXT,
+    gemini_vector vector(768),
     description_vector vector(768)
 );
 
@@ -190,10 +190,10 @@ CREATE TABLE comment (
 CREATE TABLE reactions (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    
+
     post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
     comment_id BIGINT REFERENCES comment(id) ON DELETE CASCADE,
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW(),
 
     UNIQUE (post_id, user_id)
@@ -239,7 +239,7 @@ CREATE TABLE itinerary (
     traveler_id BIGINT NOT NULL,
     created_at TIMESTAMP(6) NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP(6),
-    
+
     -- Các cột lấy từ lệnh ALTER TABLE
     estimated_total_price NUMERIC(12, 2),
     estimated_transportation_price NUMERIC(12, 2),
@@ -267,6 +267,14 @@ CREATE TABLE itinerary_activity (
 
     CONSTRAINT fk_activity_itinerary FOREIGN KEY (itinerary_id) REFERENCES itinerary(id) ON DELETE CASCADE,
     CONSTRAINT fk_activity_poi FOREIGN KEY (poi_id) REFERENCES place_of_interest(id) ON DELETE SET NULL
+);
+
+CREATE TABLE itinerary_shared_user (
+    itinerary_id BIGINT REFERENCES itinerary(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (itinerary_id, user_id)
 );
 
 -- ============================================
@@ -333,3 +341,4 @@ CREATE TABLE media_message (
     message_id BIGINT REFERENCES message(id) ON DELETE CASCADE,
     PRIMARY KEY (media_id, message_id)
 );
+

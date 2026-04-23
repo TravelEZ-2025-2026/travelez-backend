@@ -5,9 +5,13 @@ import com.example.travelez.backend.common.exception.Asserts;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.GoogleSearch;
+import com.google.genai.types.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -67,21 +71,7 @@ public class GeminiService {
     }
 
     /**
-     * 3. CACHED CONTENT METHOD: Dùng riêng cho Module 1 (Lập lộ trình với 500 POIs).
-     * @param cacheName: Tên cache đã tạo (VD: "cache_hochiminh_poi")
-     */
-    public String generateWithCache(String promptText, String cacheName, ModelType modelType) {
-        GenerateContentConfig config = GenerateContentConfig.builder()
-                .responseMimeType("application/json")
-                .cachedContent(cacheName)
-                .temperature(0.2f)
-                .build();
-
-        return callGeminiInternal(promptText, modelType, config);
-    }
-
-    /**
-     * 4. MULTIMODAL METHOD: Dùng cho Module 5 (Kiểm duyệt Video/Ảnh).
+     * 3. MULTIMODAL METHOD: Dùng cho Module 5 (Kiểm duyệt Video/Ảnh).
      * (sẽ mở rộng khi làm tới Module 5)
      */
     // public String generateMultimodal(...) { ... }
@@ -110,6 +100,38 @@ public class GeminiService {
         } catch (Exception e) {
             log.error("Error calling Gemini API: {}", e.getMessage());
             return "{\"error\": \"Gemini API Error: " + e.getMessage() + "\"}";
+        }
+    }
+
+    public String generateJsonWithSearch(String promptText, ModelType modelType) {
+        try {
+            Tool googleSearchTool = Tool.builder()
+                    .googleSearch(GoogleSearch.builder().build())
+                    .build();
+
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .responseMimeType("application/json")
+                    .temperature(0.2f)
+                    .tools(List.of(googleSearchTool)) // Kích hoạt Search Grounding
+                    .build();
+
+            GenerateContentResponse response = client.models.generateContent(
+                    modelType.modelName,
+                    promptText,
+                    config
+            );
+
+            if (response == null || response.text() == null) {
+                Asserts.fail(ResultCode.AI_SERVICE_ERROR, "Empty response from Gemini");
+            }
+
+            return response.text();
+
+        } catch (Exception e) {
+            log.error("Gemini API Error with Search Grounding: ", e);
+            throw new com.example.travelez.backend.common.exception.ApiException(
+                    ResultCode.AI_SERVICE_ERROR, "Error calling AI Provider: " + e.getMessage()
+            );
         }
     }
 }

@@ -5,6 +5,7 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
@@ -208,7 +209,7 @@ public class ItineraryServiceMockImpl implements ItineraryService {
     }
 
     @Override
-    public ItineraryResponse replanItinerary(ItinerarySaveRequest request) {
+    public ItineraryResponse replanSmartItinerary(ItineraryReplanRequest request){
         try{
             InputStream is = new ClassPathResource(
                     "mock/itinerary-response.json"
