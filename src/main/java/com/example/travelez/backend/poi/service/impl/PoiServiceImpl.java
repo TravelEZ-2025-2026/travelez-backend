@@ -6,7 +6,6 @@ import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
 import com.example.travelez.backend.media.model.Media;
-import com.example.travelez.backend.media.repository.MediaRepository;
 import com.example.travelez.backend.media.service.MediaService;
 import com.example.travelez.backend.poi.dto.request.PoiFilterRequest;
 import com.example.travelez.backend.poi.dto.response.PoiBaseResponse;

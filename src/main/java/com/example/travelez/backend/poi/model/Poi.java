@@ -2,33 +2,20 @@ package com.example.travelez.backend.poi.model;
 
 import com.example.travelez.backend.common.model.AuditableEntity;
 import com.example.travelez.backend.media.model.Media;
-import com.example.travelez.backend.poi.model.enums.PoiType;
-// import com.example.travelez.backend.review.model.Review;
 import com.example.travelez.backend.poi.model.enums.PlaceStatus;
 import com.example.travelez.backend.poi.model.enums.PoiStatus;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import com.example.travelez.backend.poi.model.enums.PoiType;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +25,8 @@ import java.util.Map;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE place_of_interest SET deleted_at = NOW() WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class Poi extends AuditableEntity {
 
     @Id
@@ -119,7 +108,10 @@ public class Poi extends AuditableEntity {
     // CascadeType.ALL, orphanRemoval = true)
     // private List<Review> reviews;
 
-    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.LAZY)
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @JoinTable(name = "media_poi", joinColumns = @JoinColumn(name = "place_of_interest_id"), inverseJoinColumns = @JoinColumn(name = "media_id"))
     private List<Media> medias;
+
+    @Column(name = "deleted_at", nullable = true)
+    private LocalDateTime deletedAt;
 }

@@ -4,7 +4,6 @@ import com.example.travelez.backend.security.component.JwtAuthenticationEntryPoi
 import com.example.travelez.backend.security.component.JwtAuthenticationTokenFilter;
 import com.example.travelez.backend.security.component.RestfulAccessDeniedHandler;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/places/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers("/api/reviews/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/ws/**", "/ws-raw/**").permitAll()
                         .anyRequest().authenticated())
