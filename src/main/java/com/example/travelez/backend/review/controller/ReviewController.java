@@ -69,4 +69,16 @@ public class ReviewController {
         return BaseResponse.success(null, ResultCode.SUCCESS, "Review deleted successfully");
     }
 
+    // get review by user id
+    @GetMapping("/users/{userId}/reviews")
+    public ResponseEntity<BaseResponse<CommonPage<ReviewBaseResponse>>> getReviewByUserId(@PathVariable Long userId,
+                                                                                         @RequestParam(required = false, defaultValue = "id") String sortField,
+                                                                                         @RequestParam(required = false, defaultValue = "DESC") Sort.Direction sortDirection,
+                                                                                         @RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                                         @RequestParam(required = false, defaultValue = "10") Integer size) {
+        final PaginationRequest request = new PaginationRequest(page, size, sortField, sortDirection);
+        CommonPage<ReviewBaseResponse> response = reviewService.getReviewByUserId(userId, PaginationUtils.getPageable(request));
+        return BaseResponse.success(response, ResultCode.SUCCESS, "Reviews fetched successfully");
+    }
+
 }

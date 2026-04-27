@@ -36,6 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,8 +64,14 @@ public class ReviewServiceImpl implements ReviewService {
         specs.add(ReviewSpecification.filterBySystemStatus(ReviewStatus.ACTIVE));
 
         Page<Review> reviews = reviewRepository.findAll(Specification.allOf(specs), pageable);
+        List<Long> reviewIds = reviews.getContent().stream().map(item -> item.getId()).toList();
+        List<Object[]> mediaData = reviewRepository.findAllMediasByReviewIds(reviewIds);
+        Map<Long, List<Media>> mediaMap = mediaService.groupMediaByParentId(mediaData);
         List<ReviewBaseResponse> reviewDetailResponses = reviews.stream()
-                .map(reviewMapper::toReviewBaseResponse)
+                .map(review -> {
+                    review.setMedias(mediaMap.get(review.getId()));
+                    return reviewMapper.toReviewBaseResponse(review);
+                })
                 .toList();
 
         return new CommonPage<>(reviewDetailResponses, reviews.getTotalPages(), reviews.getTotalElements(),
@@ -142,5 +149,21 @@ public class ReviewServiceImpl implements ReviewService {
         }
         mediaRepository.deleteAll(mediaList);
         reviewRepository.delete(review);
+    }
+
+    @Override
+    public CommonPage<ReviewBaseResponse> getReviewByUserId(Long userId, Pageable pageable) {
+        Page<Review> reviews = reviewRepository.findAllByTravelerId(userId, pageable);
+        List<Long> reviewIds = reviews.getContent().stream().map(item -> item.getId()).toList();
+        List<Object[]> mediaData = reviewRepository.findAllMediasByReviewIds(reviewIds);
+        Map<Long, List<Media>> mediaMap = mediaService.groupMediaByParentId(mediaData);
+        List<ReviewBaseResponse> reviewDetailResponses = reviews.stream()
+                .map(review -> {
+                    review.setMedias(mediaMap.get(review.getId()));
+                    return reviewMapper.toReviewBaseResponse(review);
+                })
+                .toList();
+        return new CommonPage<>(reviewDetailResponses, reviews.getTotalPages(), reviews.getTotalElements(),
+                pageable.getPageSize(), reviews.getNumber(), reviews.isEmpty());
     }
 }

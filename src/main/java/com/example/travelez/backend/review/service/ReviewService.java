@@ -16,4 +16,6 @@ public interface ReviewService {
     public ReviewBaseResponse createReview(Long poiId, ReviewCreateRequest request, List<MultipartFile> files);
 
     public void deleteReview(Long reviewId);
+
+    CommonPage<ReviewBaseResponse> getReviewByUserId(Long userId, Pageable pageable);
 }
