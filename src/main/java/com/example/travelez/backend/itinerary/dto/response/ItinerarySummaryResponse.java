@@ -21,4 +21,5 @@ public class ItinerarySummaryResponse {
     private LocalDate endDate;
     private ItineraryStatus status;
     private LocalDateTime createdAt;
+    private String ownerUsername;
 }

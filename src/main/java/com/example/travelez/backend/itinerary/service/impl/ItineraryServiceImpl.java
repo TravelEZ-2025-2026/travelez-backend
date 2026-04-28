@@ -5,6 +5,7 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
 import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
@@ -16,6 +17,7 @@ import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
 import com.example.travelez.backend.itinerary.repository.ItineraryActivityRepository;
 import com.example.travelez.backend.itinerary.repository.ItineraryRepository;
+import com.example.travelez.backend.itinerary.repository.ItinerarySharedUserRepository;
 import com.example.travelez.backend.itinerary.repository.cache.ItineraryCacheRepository;
 import com.example.travelez.backend.itinerary.repository.specification.ItinerarySpecification;
 import com.example.travelez.backend.itinerary.service.ItineraryService;
@@ -51,6 +53,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final ItineraryMapper itineraryMapper;
     private final ItineraryCacheRepository itineraryCacheRepository;
     private final AiItineraryFacade aiPipelineFacade;
+    private final ItinerarySharedUserRepository itinerarySharedUserRepository;
 
     @Override
     public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request) {
@@ -161,9 +164,15 @@ public class ItineraryServiceImpl implements ItineraryService {
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
 
-        if (!Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId())) {
-            throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to access this itinerary");
+        boolean isOwner = Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId());
+
+        if (!isOwner) {
+            boolean isSharedWithMe = itinerarySharedUserRepository.existsByItineraryIdAndUserId(itineraryId, currentUser.getUserId());
+            if (!isSharedWithMe) {
+                throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to access this itinerary. It is not shared with you.");
+            }
         }
+        // ================================
 
         List<ItineraryActivity> dbActivities = itineraryActivityRepository
                 .findByItineraryIdOrderByItineraryDateAscStartTimeAsc(itineraryId);
@@ -191,9 +200,23 @@ public class ItineraryServiceImpl implements ItineraryService {
     }
 
     @Override
-    public ItineraryResponse replanItinerary(ItinerarySaveRequest request) {
-        throw new ApiException(ResultCode.FORBIDDEN, "This feature is not available yet");
+    public ItineraryResponse replanSmartItinerary(ItineraryReplanRequest request) {
+        log.info("Handling Replan Request for user notes: {}", request.getFeedbackNotes());
+
+        // 1. Gọi luồng Replan Pipeline
+        ItineraryResponse response = aiPipelineFacade.orchestrateReplanPipeline(request);
+
+        // 2. Lưu vào Cache ngắn hạn phòng user F5 mất kết quả
+        if (response != null) {
+            String tempId = UUID.randomUUID().toString();
+            response.setTempId(tempId);
+
+            itineraryCacheRepository.save(tempId, response);
+        }
+
+        return response;
     }
+
 
     // --- HELPER METHODS ---
 

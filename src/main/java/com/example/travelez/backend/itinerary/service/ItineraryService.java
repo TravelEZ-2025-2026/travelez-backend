@@ -2,6 +2,7 @@ package com.example.travelez.backend.itinerary.service;
 
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
+import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
@@ -14,6 +15,6 @@ public interface ItineraryService {
     ItineraryDetailResponse getItineraryDetail(Long itineraryId);
     CommonPage<ItinerarySummaryResponse> getItineraryList(Pageable pageable);
     void deleteItinerary(Long itineraryId);
-    ItineraryResponse replanItinerary(ItinerarySaveRequest request);
+    ItineraryResponse replanSmartItinerary(ItineraryReplanRequest request);
     ItineraryResponse getTempItinerary(String tempId);
 }

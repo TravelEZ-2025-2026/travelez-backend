@@ -1,5 +1,6 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
+import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
@@ -64,6 +65,8 @@ public class Phase3Generation {
         tripContext.put("hasKids", reqData.getHasKids());
         tripContext.put("specialNotes", reqData.getSpecialNotes());
         tripContext.put("budget_total_vnd", reqData.getBudget());
+        tripContext.put("start_date", reqData.getStartDate().toString());
+        tripContext.put("end_date", reqData.getEndDate().toString());
 
         long startDayOfWeek = reqData.getStartDate().getDayOfWeek().getValue(); // 1=Mon .. 7=Sun
         tripContext.put("start_day_of_week", startDayOfWeek);
@@ -94,10 +97,11 @@ public class Phase3Generation {
             Return ONLY valid JSON (no markdown). Do not use an outer wrapper like 'itinerary_result'.
             
             PRE-STEP (MANDATORY INTERNAL REASONING - DO NOT OUTPUT):
-            Read the user's `specialNotes`, `styles`, and context carefully.
-            For EACH candidate POI, mentally assess how well its `semantic_text` matches the user's core intent.
-            Classify them into Tiers: TIER 1 (Must-include/Strong match), TIER 2 (Good fit), TIER 3 (Filler).
-            Prioritize TIER 1 and TIER 2. Use TIER 3 only if absolutely necessary (e.g., nearest meal).
+                - Read the user's `specialNotes`, `styles`, and explicit dates (`start_date` to `end_date`) carefully.
+                - USE GOOGLE SEARCH TOOL to actively find out:
+                  + Overall weather behavior during these specific dates in {destination_cities}.
+                  + Special events, local festivals, night markets, or seasonal phenomena happening precisely during this date range.
+                - For EACH candidate POI, Mentally assess how well its `semantic_text` and current seasonality matches the user's core intent. Classify them into Tiers (1, 2, 3).
             
             1. CORE PHILOSOPHY & PACING
             - QUALITY OVER QUANTITY: Create a coherent, intent-first itinerary. Do not pad the schedule with weak POIs just to fill time. A day with 2 amazing POIs + meals is better than a crammed day.
@@ -117,9 +121,10 @@ public class Phase3Generation {
             - STRICT NO DUPLICATION: Never use the same `poi_id` more than once across the entire trip.
             
             3. TONE & USER EXPERIENCE (CRITICAL)
+            - INCORPORATE REAL-TIME SEARCH DATA: If you found special events or seasonal highlights via search during their trip dates, gracefully mention them in `reasoningSummary` or `aiTip` (e.g. "Vì bạn đi vào dịp [Sự kiện X], mình đã ưu tiên...", "Thời tiết lúc này thường [thời tiết], hãy nhớ mang theo ô").
             - LANGUAGE RULE: You MUST write the `tripTitle`, `reasoningSummary`, and `aiTip` in the EXACT SAME LANGUAGE used in the user's `specialNotes`. If `specialNotes` is empty, null, or generic, you MUST write them in VIETNAMESE.
             - `reasoningSummary`: Act as a professional, welcoming Travel Advisor. Write an engaging paragraph explaining how this trip captures their specific travel style. DO NOT mention technical logic, tiers, budget math, or routing constraints.
-            - `aiTip`: Act as an expert local tour guide. Read the `semantic_text` of the POI and provide 1-2 sentences of highly specific, actionable advice (e.g., signature dish, specific photo angle, what to look out for). STRICTLY FORBIDDEN: Do not use generic filler phrases like "Great place for photos".
+            - `aiTip`: Act as an expert local tour guide. Read the `description` of the POI and provide 1-2 sentences of highly specific, actionable advice (e.g., signature dish, specific photo angle, what to look out for). STRICTLY FORBIDDEN: Do not use generic filler phrases like "Great place for photos".
 
             Output schema must exactly follow:
             {
@@ -162,6 +167,151 @@ public class Phase3Generation {
         );
     }
 
+    public String generateReplanItinerary(PipelineContext context, ItineraryReplanRequest replanReq) {
+        log.info("--- [PHASE 3] Generating REPLAN itinerary ---");
+
+        if (context.getRetrievedPois() == null || context.getRetrievedPois().isEmpty()) {
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Not enough POIs retrieved for replan.");
+        }
+
+        List<Map<String, Object>> poiListForPrompt = context.getRetrievedPois().stream().map(p -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("poi_id", p.getId());
+            map.put("name", p.getName());
+            map.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
+            map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> tripContext = new HashMap<>();
+        tripContext.put("destination_cities", replanReq.getDestinationCities());
+        tripContext.put("styles", replanReq.getStyles());
+        tripContext.put("companion", replanReq.getCompanion());
+        tripContext.put("hasKids", replanReq.getHasKids());
+        tripContext.put("specialNotes", replanReq.getSpecialNotes());
+        tripContext.put("budget_total_vnd", replanReq.getBudget());
+        tripContext.put("start_date", replanReq.getStartDate().toString());
+        tripContext.put("end_date", replanReq.getEndDate().toString());
+
+        long numDays = ChronoUnit.DAYS.between(replanReq.getStartDate(), replanReq.getEndDate()) + 1;
+        long startDayOfWeek = replanReq.getStartDate().getDayOfWeek().getValue();
+
+        tripContext.put("numDays", numDays);
+        tripContext.put("start_day_of_week", startDayOfWeek);
+
+        // -- REPLAN CONTEXT --
+        tripContext.put("feedback_notes", replanReq.getFeedbackNotes());
+        tripContext.put("previous_itinerary", replanReq.getPreviousItinerary());
+
+        tripContext.put("rejected_poi_ids", replanReq.getRejectedPoiIds() != null ? replanReq.getRejectedPoiIds() : List.of());
+
+        String prompt = buildReplanPrompt(tripContext, poiListForPrompt);
+
+        try {
+            String rawJsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+            rawJsonResponse = cleanJsonResponse(rawJsonResponse);
+
+            log.info("Phase 3 REPLAN generated JSON successfully.");
+            return rawJsonResponse;
+        } catch (Exception e) {
+            log.error("Phase 3 REPLAN Generation failed: ", e);
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Failed to generate REPLAN in Phase 3");
+        }
+    }
+
+    /**
+     * PROMPT DÀNH CHO REPLAN: Sử dụng Text Blocks và gson có sẵn
+     */
+    private String buildReplanPrompt(Map<String, Object> tripContext, List<Map<String, Object>> candidatePois) {
+        String previousItineraryJson = gson.toJson(tripContext.get("previous_itinerary"));
+        String candidatePoisJson = gson.toJson(candidatePois);
+        String rejectedIdsJson = gson.toJson(tripContext.get("rejected_poi_ids"));
+
+        return """
+            You are an expert AI Travel Planner explicitly REVISING an existing multi-day travel itinerary.
+            Return ONLY valid JSON (no markdown). Do not use an outer wrapper.
+
+            === REPLAN CONTEXT (CRITICAL) ===
+            The user was NOT completely satisfied with the previous itinerary and provided this feedback:
+            "%s"
+
+            Here is the PREVIOUS ITINERARY for your reference:
+            %s
+
+            EXPLICITLY REJECTED POI IDs:
+            %s
+            These specific POI IDs were rejected by the user. You are STRICTLY FORBIDDEN from including them in the new JSON output.
+
+            YOUR REVISION TASK:
+            1. Generate a COMPLETELY NEW valid JSON itinerary that incorporates the user's feedback.
+            2. Analyze what needs to change from the previous itinerary and logically swap routing/activities.
+            3. Do not suggest any rejected POI IDs. Choose alternative replacements from the Candidate POIs.
+            4. Make sure your adjusted schedule still strictly complies with realistic opening hours, OSRM distances, and travel time concepts.
+            ==================================
+
+            TRIP OVERVIEW:
+            - Style/Type: %s
+            - Companion: %s (Kids: %s)
+            - Total days: %s (Starts on actual date: %s)
+            - Budget estimate target: %s VND
+            - Additional requirements: %s
+
+            1. LOGISTICS & TIME RULES:
+            - The schedule must be realistic and spaced efficiently across %s days.
+            - Start day around 08:00 or 08:30. End the day around 21:00 to 22:00.
+            - Assign specific `id` of POIs from the Candidate list exactly.
+            - Set reasonable `startTime` and `endTime` in "HH:mm" format (e.g. "08:00").
+            - A restaurant POI should ideally span 1 to 1.5 hours. Activities usually span 1.5 to 3 hours.
+
+            2. USER EXPERIENCE & CONTENT:
+            - Mention HOW you resolved the user's feedback right in the `reasoningSummary` (in VIETNAMESE or exact language of user's notes).
+            - Write personalized and highly specific `aiTip` based on semantic_text for each selected activity.
+
+            Output schema must exactly follow:
+            {
+              "tripTitle": "Catchy naming for this trip",
+              "reasoningSummary": "Short explanation why these places suit the user",
+              "estimatedBudget": {
+                 "total": 0, "transportation": 0, "activity": 0, "foodAndDrink": 0, "accommodation": 0, "currency": "VND"
+              },
+              "days": [
+                {
+                   "dayIndex": 1,
+                   "date": "YYYY-MM-DD",
+                   "activities": [
+                      {
+                        "id": 12345,
+                        "startTime": "08:00",
+                        "endTime": "09:30",
+                        "activityName": "Short descriptive activity name",
+                        "price": 50000,
+                        "aiTip": "Practical and lively advice (2-3 sentences)..."
+                      }
+                   ]
+                }
+              ]
+            }
+            Note: `id` in activities MUST be the exact integer `poi_id` from Candidate POIs.
+
+            CANDIDATE POIS TO CHOOSE FROM (Already filtered, rejected POIs removed):
+            %s
+            """.formatted(
+                tripContext.get("feedback_notes"),
+                previousItineraryJson,
+                rejectedIdsJson,
+                tripContext.get("styles"),
+                tripContext.get("companion"),
+                tripContext.get("hasKids"),
+                tripContext.get("numDays"),
+                tripContext.get("start_date"),
+                tripContext.get("budget_total_vnd"),
+                tripContext.get("specialNotes"),
+                tripContext.get("numDays"),
+                candidatePoisJson
+        );
+    }
+
+    //--------------------------------------- Helper function-----------------------------------
     private String cleanJsonResponse(String raw) {
         if (raw == null) return null;
         int start = raw.indexOf('{');

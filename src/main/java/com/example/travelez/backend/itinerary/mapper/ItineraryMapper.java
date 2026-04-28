@@ -63,6 +63,7 @@ public interface ItineraryMapper {
     @Mapping(target = "days", ignore = true)
     ItineraryDetailResponse toDetailResponseHeader(Itinerary itinerary);
 
+    @Mapping(target = "ownerUsername", source = "traveler.username")
     ItinerarySummaryResponse toSummaryResponse(Itinerary itinerary);
 
     @Mapping(target = "id", ignore = true)

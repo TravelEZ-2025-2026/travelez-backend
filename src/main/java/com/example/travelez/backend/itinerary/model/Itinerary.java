@@ -10,6 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -90,5 +91,8 @@ public class Itinerary extends AuditableEntity {
     // Quan hệ với Activity
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItineraryActivity> activities;
+
+    @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ItinerarySharedUser> sharedUsers = new ArrayList<>();
 
 }
