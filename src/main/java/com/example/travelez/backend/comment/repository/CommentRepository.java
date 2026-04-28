@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +39,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @EntityGraph(attributePaths = {"post"})
     @Query("SELECT c FROM Comment c JOIN FETCH c.post WHERE c.id = :commentId AND c.deletedAt IS NULL")
     Optional<Comment> findByIdWithPost(Long commentId);
+
+    @Query("SELECT COUNT(c) FROM Comment c " +
+            "WHERE c.createdAt >= :startDate " +
+            "AND c.createdAt <= :endDate ")
+    Long countComments(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

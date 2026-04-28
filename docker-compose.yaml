@@ -1,21 +1,21 @@
 version: "3.8"
 
 services:
-  db:
-    image: pgvector/pgvector:pg15
-    container_name: travelez_db
-    environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: travelez
-    ports:
-      - "5439:5432"
-    volumes:
-      - travelez_postgres_data:/var/lib/postgresql
-    deploy:
-      resources:
-        limits:
-          memory: 200M    
+  # db:
+  #   image: pgvector/pgvector:pg15
+  #   container_name: travelez_db
+  #   environment:
+  #     POSTGRES_USER: ${DB_USERNAME}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
+  #     POSTGRES_DB: travelez
+  #   ports:
+  #     - "5439:5432"
+  #   volumes:
+  #     - travelez_postgres_data:/var/lib/postgresql
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 200M    
   # RabbitMQ Service
   rabbitmq:
     image: rabbitmq:3-management
@@ -43,18 +43,19 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      # - db
       - rabbitmq
     env_file:
       - .env
     environment:
-      DB_URL: jdbc:postgresql://db:5432/travelez?stringtype=unspecified
+      # DB_URL: jdbc:postgresql://db:5432/travelez?stringtype=unspecified
+      DB_URL: ${DB_URL}
       RABBITMQ_HOST: rabbitmq
       GCS_CREDENTIALS_PATH: /app/gcs-key.json
       JAVA_OPTS: "-Xmx400m -Xms256m"
 
 volumes:
-  travelez_postgres_data:
+  # travelez_postgres_data:
   travelez_rabbitmq_data:
 
 # networks:
