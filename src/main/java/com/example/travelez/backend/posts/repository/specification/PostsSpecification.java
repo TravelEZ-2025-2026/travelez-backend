@@ -51,4 +51,24 @@ public class PostsSpecification {
             return criteriaBuilder.equal(root.get("user").get("id"), userId);
         };
     }
+
+    public static Specification<Posts> filterByTopicTag(String topicTag) {
+        return (root, query, criteriaBuilder) -> {
+            if (topicTag == null) {
+                return null;
+            }
+            String topicTagLowerCase = topicTag.trim().toLowerCase();
+            return criteriaBuilder.like(criteriaBuilder.lower(root.get("topicTag")), "%" + topicTagLowerCase + "%");
+        };
+    }
+
+    public static Specification<Posts> filterByPoiId(Long poiId) {
+        return (root, query, criteriaBuilder) -> {
+            if (poiId == null) {
+                return null;
+            }
+            return criteriaBuilder.equal(root.get("poi").get("id"), poiId);
+        };
+    }
+    
 }

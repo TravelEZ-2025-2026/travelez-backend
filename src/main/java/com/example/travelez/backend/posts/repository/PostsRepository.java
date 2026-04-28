@@ -1,11 +1,18 @@
 package com.example.travelez.backend.posts.repository;
 
 import com.example.travelez.backend.posts.model.Posts;
+import com.example.travelez.backend.posts.repository.projection.TopPoiProjection;
+import com.example.travelez.backend.posts.repository.projection.TopTagProjection;
+
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecificationExecutor<Posts> {
@@ -51,5 +58,36 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
     void deletePostById(Long postId);
 
     boolean existsByIdAndUserId(Long postId, Long userId);
+
+
+    @EntityGraph(attributePaths = {"user", "poi", "poi.ward", "poi.place"})
+    Page<Posts> findAll(Specification<Posts> specification, Pageable pageable);
+
+    // Admin 
+    // --- 1. THỐNG KÊ TỔNG QUAN ---
+    @Query("SELECT COUNT(p) " +
+            "FROM Posts p " +
+            "WHERE p.status = 'PUBLISHED' " +
+            "AND p.createdAt >= :startDate " +
+            "AND p.createdAt <= :endDate ")
+    Long countPublicPosts(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // 2. THỐNG KÊ TOP POI (Của bài PUBLISHED)
+    @Query("SELECT p.poi.id as id, p.poi.name as name, COUNT(p) as countPost FROM Posts p " +
+            "WHERE p.poi IS NOT NULL AND p.status = 'PUBLISHED' " +
+            "AND p.createdAt >= :startDate " +
+            "AND p.createdAt <= :endDate " +
+            "GROUP BY p.poi.id, p.poi.name " +
+            "ORDER BY COUNT(p) DESC")
+    List<TopPoiProjection> getTopPois(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
+
+    @Query("SELECT p.topicTag as topicTag, COUNT(p) as countPost FROM Posts p " +
+            "WHERE p.topicTag IS NOT NULL AND p.topicTag <> '' " + // Loại bỏ tag rỗng
+            "AND p.status = 'PUBLISHED' " +
+            "AND p.createdAt >= :startDate " +
+            "AND p.createdAt <= :endDate " +
+            "GROUP BY p.topicTag " +
+            "ORDER BY COUNT(p) DESC")
+    List<TopTagProjection> getTopTags(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
 }
