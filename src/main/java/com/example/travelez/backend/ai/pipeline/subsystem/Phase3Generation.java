@@ -1,12 +1,12 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
+import com.example.travelez.backend.ai.pipeline.model.PoiVectorResult;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.infrastructure.gemini.GeminiService;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
-import com.example.travelez.backend.poi.model.Poi;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class Phase3Generation {
         log.info("--- [PHASE 3] Generating itinerary (pure LLM) ---");
 
         ItineraryCreationRequest reqData = context.getOriginalRequest();
-        List<Poi> poiPool = context.getRetrievedPois();
+        List<PoiVectorResult> poiPool = context.getRetrievedPois();
 
         if (poiPool == null || poiPool.isEmpty()) {
             throw new ApiException(ResultCode.VALIDATION_FAILED, "No suitable location found for this request.");
@@ -46,7 +46,7 @@ public class Phase3Generation {
                     Map<String, Object> map = new HashMap<>();
                     map.put("poi_id", p.getId());
                     map.put("name", p.getName());
-                    map.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
+                    map.put("poi_type", p.getPoiType() != null ? p.getPoiType() : "OTHER");
                     map.put("address", p.getAddress() != null ? p.getAddress() : "");
                     map.put("rating", p.getRating() != null ? p.getRating() : 3.0);
                     //map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
@@ -178,7 +178,7 @@ public class Phase3Generation {
             Map<String, Object> map = new HashMap<>();
             map.put("poi_id", p.getId());
             map.put("name", p.getName());
-            map.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
+            map.put("poi_type", p.getPoiType() != null ? p.getPoiType() : "OTHER");
             map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
             return map;
         }).collect(Collectors.toList());

@@ -1,5 +1,6 @@
 package com.example.travelez.backend.poi.repository;
 
+import com.example.travelez.backend.ai.pipeline.model.PoiVectorResult;
 import com.example.travelez.backend.poi.model.Place;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.poi.model.enums.PlaceStatus;
@@ -18,6 +19,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificationExecutor<Poi> {
     Optional<Poi> findByIdAndSystemStatus(Long id, PoiStatus systemStatus);
@@ -32,12 +34,26 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
     List<Object[]> findAllMediasByPoiIds(@Param("placeOfInterestIds") List<Long> placeOfInterestIds);
 
     @Query(value = """
-            SELECT p.* FROM place_of_interest p 
-            WHERE p.poi_type = :category
+            SELECT 
+                p.id AS id, 
+                p.name AS name, 
+                CAST(p.poi_type AS VARCHAR) AS poiType, 
+                p.poi_type_detail AS poiTypeDetail, 
+                p.address AS address, 
+                p.latitude AS latitude, 
+                p.longitude AS longitude, 
+                CAST(p.opening_hour AS TEXT) AS openingHour, 
+                p.google_maps_url AS googleMapsUrl, 
+                COALESCE(p.rating, 3.0) AS rating, 
+                p.description AS description, 
+                p.semantic_text AS semanticText
+            FROM place_of_interest p
+            WHERE p.poi_type = :category 
+              AND p.deleted_at IS NULL
             ORDER BY p.gemini_vector <=> cast(:queryVector as vector) ASC 
             LIMIT :kLimit
             """, nativeQuery = true)
-    List<Poi> findTopPoisByCategoryAndVector(
+    List<PoiVectorResult> findTopPoisByCategoryAndVector(
             @Param("category") String category,
             @Param("queryVector") String queryVector,
             @Param("kLimit") int kLimit
@@ -93,4 +109,13 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
     @Modifying
     @Query("UPDATE Poi p SET p.deletedAt = CURRENT_TIMESTAMP WHERE p.id = :id")
     void softDeleteById(@Param("id") long id);
+
+    @Query("""
+           SELECT DISTINCT p FROM Poi p 
+           LEFT JOIN FETCH p.medias 
+           LEFT JOIN FETCH p.place 
+           LEFT JOIN FETCH p.ward 
+           WHERE p.id IN :ids
+           """)
+    List<Poi> findPoisWithDetailsByIds(@Param("ids") Set<Long> ids);
 }

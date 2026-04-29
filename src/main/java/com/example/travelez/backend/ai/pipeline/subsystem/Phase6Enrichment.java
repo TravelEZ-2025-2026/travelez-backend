@@ -68,7 +68,7 @@ public class Phase6Enrichment {
         }
 
         // Bước 3: Lấy thông tin đầy đủ nhất từ Database
-        List<Poi> pois = poiRepository.findAllById(poiIds);
+        List<Poi> pois = poiRepository.findPoisWithDetailsByIds(poiIds);
         Map<Long, Poi> poiMap = pois.stream()
                 .collect(Collectors.toMap(Poi::getId, p -> p));
 

@@ -1,5 +1,6 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
+import com.example.travelez.backend.ai.pipeline.model.PoiVectorResult;
 import com.example.travelez.backend.ai.pipeline.model.SemanticQueryMap;
 import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
@@ -22,7 +23,7 @@ public class Phase2VectorRetrieval {
     private final GeminiEmbeddingService embeddingService;
     private final PoiRepository poiRepository;
 
-    public List<Poi> retrieveMatchingPois(SemanticQueryMap queryMap) {
+    public List<PoiVectorResult> retrieveMatchingPois(SemanticQueryMap queryMap) {
         log.info("--- [PHASE 2] Starting Vector Retrieval ---");
 
         Map<String, String> queries = queryMap.getSearchQueries();
@@ -46,7 +47,7 @@ public class Phase2VectorRetrieval {
         List<float[]> embeddings = embeddingService.embedTexts(textsToEmbed);
 
         // 2. Query DB theo từng Category để lấy Top-K (Mặc định lấy k=25 limits per category)
-        List<Poi> allBalancedResults = new ArrayList<>();
+        List<PoiVectorResult> allBalancedResults = new ArrayList<>();
         int limitPerCategory = 25;
 
         for (int i = 0; i < categories.size(); i++) {
@@ -57,7 +58,7 @@ public class Phase2VectorRetrieval {
             String vectorStr = Arrays.toString(vector);
 
             log.debug("Retrieving top {} for category: {}", limitPerCategory, category);
-            List<Poi> categoryPois = poiRepository.findTopPoisByCategoryAndVector(category, vectorStr, limitPerCategory);
+            List<PoiVectorResult> categoryPois = poiRepository.findTopPoisByCategoryAndVector(category, vectorStr, limitPerCategory);
 
             allBalancedResults.addAll(categoryPois);
         }
@@ -66,8 +67,8 @@ public class Phase2VectorRetrieval {
         return allBalancedResults;
     }
 
-    public List<Poi> retrieveForReplan(ItineraryReplanRequest request, SemanticQueryMap queryMap) {
-        List<Poi> candidates = retrieveMatchingPois(queryMap);
+    public List<PoiVectorResult> retrieveForReplan(ItineraryReplanRequest request, SemanticQueryMap queryMap) {
+        List<PoiVectorResult> candidates = retrieveMatchingPois(queryMap);
 
         if (request.getRejectedPoiIds() != null && !request.getRejectedPoiIds().isEmpty()) {
             candidates = candidates.stream()

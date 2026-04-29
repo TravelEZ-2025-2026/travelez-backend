@@ -13,7 +13,7 @@ import java.util.List;
 public class PipelineContext {
     private ItineraryCreationRequest originalRequest;
     private SemanticQueryMap searchQueries;
-    private List<Poi> retrievedPois;
+    private List<PoiVectorResult> retrievedPois;
     private String rawLlmResponse;
     private ItineraryResponse finalResponse;
 }
