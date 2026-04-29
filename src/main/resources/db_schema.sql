@@ -343,3 +343,30 @@ CREATE TABLE media_message (
     PRIMARY KEY (media_id, message_id)
 );
 
+-- ============================================
+-- NOTIFICATION
+-- ============================================
+CREATE TABLE notification (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ
+);
+
+-- ============================================
+-- POST STATUS HISTORY (LOG FOR POST STATUS CHANGE)
+-- ============================================
+CREATE TABLE post_status_history (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    old_status VARCHAR(50) NOT NULL,
+    new_status VARCHAR(50) NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

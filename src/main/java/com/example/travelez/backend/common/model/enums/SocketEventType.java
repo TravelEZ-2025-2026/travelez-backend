@@ -4,4 +4,5 @@ public enum SocketEventType {
     NEW_MESSAGE,
     NEW_MESSAGE_ALERT,
     MESSAGE_RECALLED,
+    SYSTEM_NOTIFICATION,
 }
