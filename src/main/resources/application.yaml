@@ -15,8 +15,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
-    # show-sql: false
+    # show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -82,6 +82,7 @@ server:
 travelez:
   swagger:
     server-url: ${SWAGGER_SERVER_URL:http://localhost:8080}
+  secret-code: ${SECRET_CODE}
 app:
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}

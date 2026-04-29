@@ -90,4 +90,7 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
             "ORDER BY COUNT(p) DESC")
     List<TopTagProjection> getTopTags(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"user"})
+    @Query("SELECT p FROM Posts p WHERE p.id = :postId")
+    Optional<Posts> findByPostId(@Param("postId") Long postId);
 }

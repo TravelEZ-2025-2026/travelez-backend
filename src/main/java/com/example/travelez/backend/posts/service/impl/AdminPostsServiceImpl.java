@@ -2,15 +2,23 @@ package com.example.travelez.backend.posts.service.impl;
 
 import com.example.travelez.backend.comment.repository.CommentRepository;
 import com.example.travelez.backend.common.api.CommonPage;
+import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.utils.DateTimesUtils;
+import com.example.travelez.backend.common.utils.SecurityUtils;
 import com.example.travelez.backend.posts.dto.request.AdminPostsFilterRequest;
+import com.example.travelez.backend.posts.dto.request.BanPostRequest;
 import com.example.travelez.backend.posts.dto.request.PostStatRequest;
+import com.example.travelez.backend.posts.dto.request.UnbanPostRequest;
 import com.example.travelez.backend.posts.dto.response.AdminPostsResponse;
 import com.example.travelez.backend.posts.dto.response.PostStatResponse;
 import com.example.travelez.backend.posts.dto.response.TopPoiResponse;
 import com.example.travelez.backend.posts.dto.response.TopTagResponse;
+import com.example.travelez.backend.posts.event.PostsStatusChangedEvent;
 import com.example.travelez.backend.posts.mapper.PostsMapper;
 import com.example.travelez.backend.posts.model.Posts;
+import com.example.travelez.backend.posts.model.enums.PostStatus;
+import com.example.travelez.backend.posts.model.enums.PostStatusAction;
 import com.example.travelez.backend.posts.repository.PostsRepository;
 import com.example.travelez.backend.posts.repository.specification.PostsSpecification;
 import com.example.travelez.backend.posts.service.AdminPostsService;
@@ -18,11 +26,13 @@ import com.example.travelez.backend.reaction.model.enums.ReactionTargetType;
 import com.example.travelez.backend.reaction.service.ReactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +45,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminPostsServiceImpl implements AdminPostsService {
+
+    private final ApplicationEventPublisher eventPublisher;
 
     private final ReactionService reactionService;
 
@@ -89,6 +101,36 @@ public class AdminPostsServiceImpl implements AdminPostsService {
                 .map(post -> postsMapper.toAdminPostsResponse(post, countMap.getOrDefault(post.getId(), 0L), reactionMap.getOrDefault(post.getId(), 0L)))
                 .collect(Collectors.toList());
         return new CommonPage<>(adminPostsResponses, page.getTotalPages(), page.getTotalElements(), pageable.getPageSize(), page.getNumber(), page.isEmpty());
+    }
+
+    @Override
+    @Transactional
+    public void banPost(Long postId, BanPostRequest request) {
+        Posts post = postsRepository.findByPostId(postId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Post not found"));
+        if (post.getStatus() == PostStatus.BANNED) {
+            throw new ApiException(ResultCode.BAD_REQUEST, "Post already banned");
+        }
+        PostStatus oldStatus = post.getStatus();
+        post.setStatus(PostStatus.BANNED);
+        postsRepository.save(post);
+        Long adminId = SecurityUtils.getCurrentUserId();
+        eventPublisher.publishEvent(new PostsStatusChangedEvent(post, adminId, post.getUser().getId(), oldStatus, PostStatus.BANNED, PostStatusAction.BANNED, request.getReason()));
+    }
+
+    @Override
+    @Transactional
+    public void unbanPost(Long postId, UnbanPostRequest request) {
+        Posts post = postsRepository.findByPostId(postId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Post not found"));
+        if (post.getStatus() != PostStatus.BANNED) {
+            throw new ApiException(ResultCode.BAD_REQUEST, "Post is not banned");
+        }
+        PostStatus oldStatus = post.getStatus();
+        post.setStatus(PostStatus.PUBLISHED);
+        postsRepository.save(post);
+        Long adminId = SecurityUtils.getCurrentUserId();
+        eventPublisher.publishEvent(new PostsStatusChangedEvent(post, adminId, post.getUser().getId(), oldStatus, PostStatus.PUBLISHED, PostStatusAction.UNBANNED, request.getReason()));
     }
 
     private Map<Long, Long> getCountCommentPosts(List<Long> postIds) {
