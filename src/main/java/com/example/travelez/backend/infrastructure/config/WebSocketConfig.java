@@ -31,7 +31,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private String rabbitmqHost;
     @Value("${spring.rabbitmq.username}")
     private String rabbitmqUser;
-    @Value("${spring.datasource.password}")
+    @Value("${spring.rabbitmq.password}")
     private String rabbitmqPass;
 
     public WebSocketConfig(List<StompCommandHandler> handlers) {
