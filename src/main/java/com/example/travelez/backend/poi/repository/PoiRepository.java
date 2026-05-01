@@ -118,4 +118,47 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
            WHERE p.id IN :ids
            """)
     List<Poi> findPoisWithDetailsByIds(@Param("ids") Set<Long> ids);
+
+    @Query(value = "SELECT cast(gemini_vector as text) FROM place_of_interest WHERE id = :poiId", nativeQuery = true)
+    Optional<String> findGeminiVectorStringById(@Param("poiId") Long poiId);
+
+    @Query(value = """
+            -- GIAI ĐOẠN 1: Lấy Top 100 POI sát với ý định của Prompt nhất
+            WITH candidate_pois AS (
+                SELECT 
+                    p.id AS id, 
+                    p.name AS name, 
+                    CAST(p.poi_type AS VARCHAR) AS poiType, 
+                    p.poi_type_detail AS poiTypeDetail, 
+                    p.address AS address, 
+                    p.latitude AS latitude, 
+                    p.longitude AS longitude, 
+                    CAST(p.opening_hour AS TEXT) AS openingHour, 
+                    p.google_maps_url AS googleMapsUrl, 
+                    COALESCE(p.rating, 3.0) AS rating, 
+                    p.description AS description, 
+                    p.semantic_text AS semanticText,
+                    p.gemini_vector <=> cast(:queryVector as vector) AS query_distance,
+                    p.gemini_vector
+                FROM place_of_interest p
+                WHERE p.poi_type = :category 
+                  AND p.deleted_at IS NULL
+                ORDER BY query_distance ASC 
+                LIMIT 100
+            )
+            -- GIAI ĐOẠN 2: Chấm điểm lại với 30% trọng số ưu tiên sở thích User
+            SELECT 
+                c.id, c.name, c.poiType, c.poiTypeDetail, c.address, c.latitude, c.longitude, 
+                c.openingHour, c.googleMapsUrl, c.rating, c.description, c.semanticText
+            FROM candidate_pois c
+            ORDER BY 
+                (0.7 * c.query_distance) + (0.3 * (c.gemini_vector <=> cast(:userVector as vector))) ASC 
+            LIMIT :kLimit
+            """, nativeQuery = true)
+    List<PoiVectorResult> findTopPoisByCategoryWithReRanking(
+            @Param("category") String category,
+            @Param("queryVector") String queryVector,
+            @Param("userVector") String userVector,
+            @Param("kLimit") int kLimit
+    );
 }

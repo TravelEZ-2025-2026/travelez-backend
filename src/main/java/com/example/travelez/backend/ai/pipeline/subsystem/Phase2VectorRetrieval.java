@@ -1,5 +1,6 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
+import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
 import com.example.travelez.backend.ai.pipeline.model.PoiVectorResult;
 import com.example.travelez.backend.ai.pipeline.model.SemanticQueryMap;
 import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
@@ -23,16 +24,17 @@ public class Phase2VectorRetrieval {
     private final GeminiEmbeddingService embeddingService;
     private final PoiRepository poiRepository;
 
-    public List<PoiVectorResult> retrieveMatchingPois(SemanticQueryMap queryMap) {
+    public List<PoiVectorResult> retrieveMatchingPois(PipelineContext context) {
         log.info("--- [PHASE 2] Starting Vector Retrieval ---");
 
-        Map<String, String> queries = queryMap.getSearchQueries();
+        SemanticQueryMap queryMap = context.getSearchQueries();
+        Map<String, String> queries = queryMap != null ? queryMap.getSearchQueries() : null;
+
         if (queries == null || queries.isEmpty()) {
             log.warn("No queries generated from Phase 1.");
             return List.of();
         }
 
-        // Tách keys (categories) và values (text cần embed)
         List<String> categories = new ArrayList<>();
         List<String> textsToEmbed = new ArrayList<>();
 
@@ -50,15 +52,24 @@ public class Phase2VectorRetrieval {
         List<PoiVectorResult> allBalancedResults = new ArrayList<>();
         int limitPerCategory = 25;
 
+        // --- LẤY VECTOR PROFILE TỪ CONTEXT ---
+        String userVector = context.getUserProfileVector();
+
         for (int i = 0; i < categories.size(); i++) {
             String category = categories.get(i);
-            float[] vector = embeddings.get(i);
+            String vectorStr = Arrays.toString(embeddings.get(i));
+            List<PoiVectorResult> categoryPois;
 
-            // Xoay mảng float thành string dạng "[0.12, 0.45, ...]" để map vào PostgreSQL native query
-            String vectorStr = Arrays.toString(vector);
-
-            log.debug("Retrieving top {} for category: {}", limitPerCategory, category);
-            List<PoiVectorResult> categoryPois = poiRepository.findTopPoisByCategoryAndVector(category, vectorStr, limitPerCategory);
+            // --- BẮT ĐẦU LOGIC RẼ NHÁNH: NORMAL RETRIEVAL vs RE-RANKING ---
+            if (userVector == null || userVector.isBlank()) {
+                log.debug("Guest or Cold-start user. Retrieving top {} for category: {}", limitPerCategory, category);
+                // Dùng Native Query cũ
+                categoryPois = poiRepository.findTopPoisByCategoryAndVector(category, vectorStr, limitPerCategory);
+            } else {
+                log.debug("Active user detected. Applying Re-ranking top {} for category: {}", limitPerCategory, category);
+                // Dùng Native Query mới với CTE (Bạn nhớ đảm bảo file PoiRepository đã có hàm này nhé)
+                categoryPois = poiRepository.findTopPoisByCategoryWithReRanking(category, vectorStr, userVector, limitPerCategory);
+            }
 
             allBalancedResults.addAll(categoryPois);
         }
@@ -67,8 +78,8 @@ public class Phase2VectorRetrieval {
         return allBalancedResults;
     }
 
-    public List<PoiVectorResult> retrieveForReplan(ItineraryReplanRequest request, SemanticQueryMap queryMap) {
-        List<PoiVectorResult> candidates = retrieveMatchingPois(queryMap);
+    public List<PoiVectorResult> retrieveForReplan(ItineraryReplanRequest request, PipelineContext context) {
+        List<PoiVectorResult> candidates = retrieveMatchingPois(context); // Gọi lại hàm phía trên
 
         if (request.getRejectedPoiIds() != null && !request.getRejectedPoiIds().isEmpty()) {
             candidates = candidates.stream()

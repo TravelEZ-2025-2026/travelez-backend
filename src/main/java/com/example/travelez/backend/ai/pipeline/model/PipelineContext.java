@@ -16,4 +16,5 @@ public class PipelineContext {
     private List<PoiVectorResult> retrievedPois;
     private String rawLlmResponse;
     private ItineraryResponse finalResponse;
+    private String userProfileVector;
 }

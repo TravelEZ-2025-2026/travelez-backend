@@ -66,6 +66,9 @@ public class User extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private AuthProvider authProvider;
 
+    @Column(name = "profile_vector", columnDefinition = "text")
+    private String profileVector;
+
     @OneToOne
     @JoinColumn(name = "avatar_id")
     private Media avatar;

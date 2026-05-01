@@ -49,7 +49,8 @@ CREATE TABLE users (
     follower_count BIGINT NOT NULL DEFAULT 0, -- nguoi ma theo doi minh
     following_count BIGINT NOT NULL DEFAULT 0, -- nguoi ma minh thoi doi
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
+    profile_vector vector(768)
 );
 CREATE TABLE admin (
     id BIGSERIAL PRIMARY KEY,

@@ -4,6 +4,8 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.utils.SecurityUtils;
+import com.example.travelez.backend.poi.repository.PoiRepository;
+import com.example.travelez.backend.posts.repository.PostsRepository;
 import com.example.travelez.backend.reaction.dto.request.ReactionToggleRequest;
 import com.example.travelez.backend.reaction.dto.response.ReactorsResponse;
 import com.example.travelez.backend.reaction.handler.ReactionTargetHandler;
@@ -14,6 +16,7 @@ import com.example.travelez.backend.reaction.repository.ReactionRepository;
 import com.example.travelez.backend.reaction.service.ReactionService;
 import com.example.travelez.backend.social.service.FollowService;
 import com.example.travelez.backend.users.model.User;
+import com.example.travelez.backend.users.service.impl.UserVectorTrackingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +44,10 @@ public class ReactionServiceImpl implements ReactionService {
 
     private final ReactionMapper reactionMapper;
 
+    private final PostsRepository postsRepository;
+
+    private final UserVectorTrackingService userVectorTrackingService;
+
     @Override
     public void toggleReaction(ReactionToggleRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -64,6 +71,15 @@ public class ReactionServiceImpl implements ReactionService {
                         .build();
                 handler.setTargetId(reaction, request.getTargetId());
                 reactionRepository.save(reaction);
+
+                if (request.getTargetType() == ReactionTargetType.POST) {
+                    postsRepository.findById(request.getTargetId()).ifPresent(post -> {
+                        // Nếu Post này có gắn POI, kích hoạt chạy ngầm Tracking sinh Vector
+                        if (post.getPoi() != null) {
+                            userVectorTrackingService.trackUserPreferenceOnLike(userId, post.getPoi().getId());
+                        }
+                    });
+                }
             }
             return null;
         });
