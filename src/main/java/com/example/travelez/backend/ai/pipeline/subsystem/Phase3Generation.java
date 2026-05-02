@@ -155,7 +155,9 @@ public class Phase3Generation {
             User trip context:
             %s
             
-            Candidate POIs (use address/hours/semantic_text to plan):
+            CANDIDATE POIS (CRITICAL INSTRUCTION - ALREADY PRE-SORTED):
+            The POIs below have been mathematically sorted by our Vector AI. The items at the TOP of this list are the STRONGEST matches for the user's personal semantic profile.
+            Strongly prioritize selecting POIs from the top of the list unless routing, opening hours, or category limits strictly forbid it:
             %s
             """.formatted(
                 preferredMin,
@@ -293,7 +295,9 @@ public class Phase3Generation {
             }
             Note: `id` in activities MUST be the exact integer `poi_id` from Candidate POIs.
 
-            CANDIDATE POIS TO CHOOSE FROM (Already filtered, rejected POIs removed):
+            CANDIDATE POIS TO CHOOSE FROM (CRITICAL INSTRUCTION - ALREADY FILTERED & SORTED):
+            These POIs have been mathematically sorted by our Vector AI. The items at the TOP are the best matching alternatives based on the user's profile.
+            Strongly prioritize top POIs unless you are replacing them with something that better addresses the user's Replan feedback:
             %s
             """.formatted(
                 tripContext.get("feedback_notes"),
