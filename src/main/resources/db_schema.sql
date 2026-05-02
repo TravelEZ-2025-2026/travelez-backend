@@ -49,8 +49,7 @@ CREATE TABLE users (
     follower_count BIGINT NOT NULL DEFAULT 0, -- nguoi ma theo doi minh
     following_count BIGINT NOT NULL DEFAULT 0, -- nguoi ma minh thoi doi
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ,
-    profile_vector vector(768)
+    updated_at TIMESTAMPTZ
 );
 CREATE TABLE admin (
     id BIGSERIAL PRIMARY KEY,
@@ -67,6 +66,12 @@ CREATE TABLE provider (
     address TEXT,
     business_name VARCHAR(100),
     CONSTRAINT fk_provider_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE user_profile_vector (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    profile_vector vector(768),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================

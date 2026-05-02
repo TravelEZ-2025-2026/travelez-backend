@@ -12,8 +12,8 @@ import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationReque
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.security.component.UserPrinciple;
-import com.example.travelez.backend.users.model.User;
-import com.example.travelez.backend.users.repository.UserRepository;
+import com.example.travelez.backend.users.model.UserProfileVector;
+import com.example.travelez.backend.users.repository.UserProfileVectorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -33,7 +33,7 @@ public class AiItineraryFacade {
     private final Phase4Evaluation evaluator;
     private final Phase5Correction corrector;
     private final Phase6Enrichment enricher;
-    private final UserRepository userRepository;
+    private final UserProfileVectorRepository userProfileVectorRepository;
 
     private String getCurrentUserProfileVector() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -46,9 +46,8 @@ public class AiItineraryFacade {
         UserPrinciple principle = (UserPrinciple) authentication.getPrincipal();
         Long userId = principle.getUserId();
 
-        // Query DB để lấy Vector mới nhất của User
-        return userRepository.findById(userId)
-                .map(User::getProfileVector)
+        return userProfileVectorRepository.findById(userId)
+                .map(UserProfileVector::getProfileVector)
                 .filter(vector -> !vector.isBlank())
                 .orElse(null);
     }
