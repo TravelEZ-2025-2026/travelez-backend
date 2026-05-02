@@ -84,7 +84,7 @@ public class Phase3Generation {
             return rawJsonResponse;
         } catch (Exception e) {
             log.error("Failed to generate itinerary in Phase 3", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI cannot generate a schedule right now.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 
@@ -215,7 +215,7 @@ public class Phase3Generation {
             return rawJsonResponse;
         } catch (Exception e) {
             log.error("Phase 3 REPLAN Generation failed: ", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Failed to generate REPLAN in Phase 3");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 

@@ -86,7 +86,7 @@ public class Phase5Correction {
             return fixedJson;
         } catch (Exception e) {
             log.error("Failed to repair itinerary in Phase 5", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Unable to fix AI error at this time.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 

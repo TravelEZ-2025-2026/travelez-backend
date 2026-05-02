@@ -76,7 +76,7 @@ public class AiItineraryFacade {
         // PHASE 4: Kiểm duyệt bằng Logic OSRM, Giờ mở cửa, Budget
         EvaluationReport report = evaluator.evaluate(context);
 
-        // PHASE 5: Tự Sửa Lỗi (Self-correction) nếu Phase 4 gặp lỗi
+        // PHASE 5: Tự Sửa Lỗi nếu Phase 4 gặp lỗi
         if (!report.isPassed()) {
             log.warn("Phase 4 caught errors ({}). Initiating Phase 5 (LLM2 Correction)...", report.getErrors().size());
             String fixedJson = corrector.fixItineraryWithLlm2(context, report);

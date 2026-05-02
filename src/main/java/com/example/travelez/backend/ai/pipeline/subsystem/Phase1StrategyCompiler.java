@@ -20,24 +20,21 @@ public class Phase1StrategyCompiler {
     public SemanticQueryMap generateSearchQueries(ItineraryCreationRequest request) {
         log.info("--- [PHASE 1] Generating semantic search queries ---");
 
-        // 1. Chuyển DTO request của user sang dạng JSON string để nhét vào Prompt
         String requestJsonStr = gson.toJson(request);
 
-        // 2. Build Prompt dựa trên Notebook Python
         String prompt = buildPrompt(requestJsonStr);
 
         try {
             log.debug("Calling Gemini for Semantic Queries...");
             String jsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
 
-            // 4. Map JSON trả về vào Object
             SemanticQueryMap result = gson.fromJson(jsonResponse, SemanticQueryMap.class);
 
             return result;
 
         } catch (Exception e) {
             log.error("Phase 1 failed to generate search queries.", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Error in analyzing user behavior with AI.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 

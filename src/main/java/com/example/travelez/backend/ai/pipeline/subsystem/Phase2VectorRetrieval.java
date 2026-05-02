@@ -45,10 +45,8 @@ public class Phase2VectorRetrieval {
             }
         }
 
-        // 1. Lấy vector hàng loạt từ Gemini
         List<float[]> embeddings = embeddingService.embedTexts(textsToEmbed);
 
-        // 2. Query DB theo từng Category để lấy Top-K (Mặc định lấy k=25 limits per category)
         List<PoiVectorResult> allBalancedResults = new ArrayList<>();
         int limitPerCategory = 25;
 
@@ -67,7 +65,7 @@ public class Phase2VectorRetrieval {
                 categoryPois = poiRepository.findTopPoisByCategoryAndVector(category, vectorStr, limitPerCategory);
             } else {
                 log.debug("Active user detected. Applying Re-ranking top {} for category: {}", limitPerCategory, category);
-                // Dùng Native Query mới với CTE (Bạn nhớ đảm bảo file PoiRepository đã có hàm này nhé)
+                // Dùng Native Query mới với CTE và Re-ranking
                 categoryPois = poiRepository.findTopPoisByCategoryWithReRanking(category, vectorStr, userVector, limitPerCategory);
             }
 
@@ -79,7 +77,7 @@ public class Phase2VectorRetrieval {
     }
 
     public List<PoiVectorResult> retrieveForReplan(ItineraryReplanRequest request, PipelineContext context) {
-        List<PoiVectorResult> candidates = retrieveMatchingPois(context); // Gọi lại hàm phía trên
+        List<PoiVectorResult> candidates = retrieveMatchingPois(context);
 
         if (request.getRejectedPoiIds() != null && !request.getRejectedPoiIds().isEmpty()) {
             candidates = candidates.stream()

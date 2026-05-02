@@ -23,20 +23,20 @@ public class UserVectorTrackingService {
     @Transactional
     public void trackUserPreferenceOnLike(Long userId, Long poiId) {
         log.info("========== [VECTOR TRACKING] START ==========");
-        log.info("[1] Bắt đầu tính toán Vector cho User ID: {} dựa trên POI ID: {}", userId, poiId);
+        log.info("[1] Start calculating Vector for User ID: {} based on POI ID: {}", userId, poiId);
 
         // 1. Lấy chuỗi vector của POI
         String poiVectorStr = poiRepository.findGeminiVectorStringById(poiId).orElse(null);
         if (poiVectorStr == null) {
-            log.warn("[X] HỦY BỎ: Không tìm thấy Vector cho POI ID: {}", poiId);
+            log.warn("[X] ABORT: Vector not found for POI ID: {}", poiId);
             return;
         }
-        log.info("[2] Đã lấy thành công Vector của POI ID: {} (Chiều dài chuỗi: {})", poiId, poiVectorStr.length());
+        log.info("[2] Successfully retrieved Vector for POI ID: {} (String length: {})", poiId, poiVectorStr.length());
 
         // 2. Lấy đối tượng User
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
-            log.warn("[X] HỦY BỎ: Không tìm thấy User ID: {}", userId);
+            log.warn("[X] ABORT: User ID not found: {}", userId);
             return;
         }
 
@@ -46,16 +46,16 @@ public class UserVectorTrackingService {
 
         if (currentProfileStr == null || currentProfileStr.isBlank()) {
             // Cold-start MVP
-            log.info("[3] TRẠNG THÁI: COLD-START. User {} chưa có Profile Vector.", userId);
+            log.info("[3] STATUS: COLD-START. User {} does not have a Profile Vector yet.", userId);
             user.setProfileVector(Arrays.toString(poiVector));
-            log.info("[4] HOÀN TẤT: Đã gán 100% Vector của POI {} cho User {}", poiId, userId);
+            log.info("[4] DONE: Assigned 100% of POI {}'s Vector to User {}", poiId, userId);
         } else {
             // Cập nhật ngầm (EMA)
-            log.info("[3] TRẠNG THÁI: UPDATE (EMA). User {} ĐÃ có Profile Vector.", userId);
+            log.info("[3] STATUS: UPDATE (EMA). User {} ALREADY has a Profile Vector.", userId);
             float[] userVector = parseVectorString(currentProfileStr);
 
             if (userVector.length != poiVector.length) {
-                log.error("[X] LỖI CHIỀU VECTOR: User Vector ({}) khác POI Vector ({})", userVector.length, poiVector.length);
+                log.error("[X] VECTOR DIMENSION ERROR: User Vector ({}) differs from POI Vector ({})", userVector.length, poiVector.length);
                 return;
             }
 
@@ -65,7 +65,7 @@ public class UserVectorTrackingService {
             }
 
             user.setProfileVector(Arrays.toString(newVector));
-            log.info("[4] HOÀN TẤT: Đã trộn Vector (80% User + 20% POI).");
+            log.info("[4] DONE: Blended Vector (80% User + 20% POI).");
         }
 
         userRepository.save(user);
