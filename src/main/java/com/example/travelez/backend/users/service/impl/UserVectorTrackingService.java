@@ -99,12 +99,22 @@ public class UserVectorTrackingService {
         }
 
         float[] revertedVector = new float[currentUserVector.length];
+        boolean isAllZero = true;
+
         for (int i = 0; i < currentUserVector.length; i++) {
             // Đảo ngược công thức: V_old = (V_new - 0.2 * V_poi) / 0.8
             revertedVector[i] = (currentUserVector[i] - (0.2f * poiVector[i])) / 0.8f;
+
+            if (Math.abs(revertedVector[i]) > 1e-5) {
+                isAllZero = false;
+            }
         }
 
-        vectorRepository.upsertProfileVector(userId, Arrays.toString(revertedVector));
+        if (isAllZero) {
+            vectorRepository.deleteById(userId);
+        } else {
+            vectorRepository.upsertProfileVector(userId, Arrays.toString(revertedVector));
+        }
     }
 
     private float[] parseVectorString(String vectorStr) {
