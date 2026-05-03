@@ -1,6 +1,10 @@
 package com.example.travelez.backend.users.service.impl;
 
+import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.poi.repository.PoiRepository;
+import com.example.travelez.backend.posts.repository.PostsRepository;
+import com.example.travelez.backend.reaction.model.enums.ReactionTargetType;
 import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.model.UserProfileVector;
 import com.example.travelez.backend.users.repository.UserProfileVectorRepository;
@@ -21,65 +25,86 @@ public class UserVectorTrackingService {
     private final UserRepository userRepository;
     private final PoiRepository poiRepository;
     private final UserProfileVectorRepository vectorRepository;
+    private final PostsRepository postsRepository;
 
     @Async
     @Transactional
+    public void handleReactionToggle(Long userId, Long targetId, ReactionTargetType targetType, boolean isLike) {
+        if (targetType != ReactionTargetType.POST) {
+            return;
+        }
+
+        postsRepository.findById(targetId).ifPresent(post -> {
+            if (post.getPoi() != null) {
+                if (isLike) {
+                    trackUserPreferenceOnLike(userId, post.getPoi().getId());
+                } else {
+                    trackUserPreferenceOnUnlike(userId, post.getPoi().getId());
+                }
+            }
+        });
+    }
+
     public void trackUserPreferenceOnLike(Long userId, Long poiId) {
-        log.info("========== [VECTOR TRACKING] START ==========");
-        log.info("[1] Start calculating Vector for User ID: {} based on POI ID: {}", userId, poiId);
 
-        // 1. Lấy chuỗi vector của POI
-        String poiVectorStr = poiRepository.findGeminiVectorStringById(poiId).orElse(null);
-        if (poiVectorStr == null) {
-            log.warn("[X] ABORT: Vector not found for POI ID: {}", poiId);
-            return;
-        }
-        log.info("[2] Successfully retrieved Vector for POI ID: {} (String length: {})", poiId, poiVectorStr.length());
+        String poiVectorStr = poiRepository.findGeminiVectorStringById(poiId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Vector not found for POI ID: " + poiId));
 
-        // 2. Lấy đối tượng User (chỉ để kiểm tra tồn tại)
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            log.warn("[X] ABORT: User ID not found: {}", userId);
-            return;
-        }
-
-        // --- FIX LỖI PARSE VECTOR TẠI ĐÂY ---
         float[] poiVector = parseVectorString(poiVectorStr);
-
-        // 3. Xử lý logic trên bảng UserProfileVector riêng
-        UserProfileVector userVectorEntity = vectorRepository.findById(userId)
-                .orElse(new UserProfileVector(userId, null, null));
-
-        String currentProfileStr = userVectorEntity.getProfileVector();
+        String currentProfileStr = vectorRepository.findById(userId).map(UserProfileVector::getProfileVector).orElse(null);
+        String targetVectorStr;
 
         if (currentProfileStr == null || currentProfileStr.isBlank()) {
-            // Cold-start MVP
-            log.info("[3] STATUS: COLD-START. User {} does not have a Profile Vector yet.", userId);
-            userVectorEntity.setProfileVector(Arrays.toString(poiVector));
-            log.info("[4] DONE: Assigned 100% of POI {}'s Vector to User {}", poiId, userId);
+            float[] initialVector = new float[poiVector.length];
+            for (int i = 0; i < poiVector.length; i++) {
+                initialVector[i] = 0.2f * poiVector[i];
+            }
+            targetVectorStr = Arrays.toString(initialVector);
+
         } else {
-            // Cập nhật ngầm (EMA)
-            log.info("[3] STATUS: UPDATE (EMA). User {} ALREADY has a Profile Vector.", userId);
             float[] userVector = parseVectorString(currentProfileStr);
 
             if (userVector.length != poiVector.length) {
-                log.error("[X] VECTOR DIMENSION ERROR: User Vector ({}) differs from POI Vector ({})",
-                        userVector.length, poiVector.length);
-                return;
+                throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Vector dimension error between User and POI");
             }
 
-            // --- FIX VÒNG LẶP ARRAY TẠI ĐÂY ---
             float[] newVector = new float[userVector.length];
             for (int i = 0; i < userVector.length; i++) {
                 newVector[i] = (0.8f * userVector[i]) + (0.2f * poiVector[i]); // Thêm thuật toán EMA
             }
 
-            userVectorEntity.setProfileVector(Arrays.toString(newVector));
-            log.info("[4] DONE: Blended Vector (80% User + 20% POI).");
+            targetVectorStr = Arrays.toString(newVector);
         }
 
-        vectorRepository.save(userVectorEntity);
-        log.info("========== [VECTOR TRACKING] SUCCESS ==========\n");
+        vectorRepository.upsertProfileVector(userId, targetVectorStr);
+    }
+
+    public void trackUserPreferenceOnUnlike(Long userId, Long poiId) {
+
+        String poiVectorStr = poiRepository.findGeminiVectorStringById(poiId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Vector not found for POI ID: " + poiId));
+
+        UserProfileVector userVectorEntity = vectorRepository.findById(userId).orElse(null);
+
+        if (userVectorEntity == null || userVectorEntity.getProfileVector() == null || userVectorEntity.getProfileVector().isBlank()) {
+            log.info("User has no vector profile yet, nothing to revert.");
+            return;
+        }
+
+        float[] poiVector = parseVectorString(poiVectorStr);
+        float[] currentUserVector = parseVectorString(userVectorEntity.getProfileVector());
+
+        if (currentUserVector.length != poiVector.length) {
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Vector dimension error");
+        }
+
+        float[] revertedVector = new float[currentUserVector.length];
+        for (int i = 0; i < currentUserVector.length; i++) {
+            // Đảo ngược công thức: V_old = (V_new - 0.2 * V_poi) / 0.8
+            revertedVector[i] = (currentUserVector[i] - (0.2f * poiVector[i])) / 0.8f;
+        }
+
+        vectorRepository.upsertProfileVector(userId, Arrays.toString(revertedVector));
     }
 
     private float[] parseVectorString(String vectorStr) {

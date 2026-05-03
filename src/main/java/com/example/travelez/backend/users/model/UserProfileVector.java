@@ -13,11 +13,11 @@ import lombok.*;
 public class UserProfileVector {
 
     @Id
-    @Column(name = "user_id")
-    private Long userId;
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @MapsId
+    @JoinColumn(name = "user_id")
     private User user;
 
     @Column(name = "profile_vector", columnDefinition = "text")

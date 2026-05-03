@@ -4,8 +4,6 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.utils.SecurityUtils;
-import com.example.travelez.backend.poi.repository.PoiRepository;
-import com.example.travelez.backend.posts.repository.PostsRepository;
 import com.example.travelez.backend.reaction.dto.request.ReactionToggleRequest;
 import com.example.travelez.backend.reaction.dto.response.ReactorsResponse;
 import com.example.travelez.backend.reaction.handler.ReactionTargetHandler;
@@ -44,8 +42,6 @@ public class ReactionServiceImpl implements ReactionService {
 
     private final ReactionMapper reactionMapper;
 
-    private final PostsRepository postsRepository;
-
     private final UserVectorTrackingService userVectorTrackingService;
 
     @Override
@@ -60,11 +56,13 @@ public class ReactionServiceImpl implements ReactionService {
             throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to interact with this target");
         }
 
-        transactionTemplate.execute(status -> {
+        boolean isLike = Boolean.TRUE.equals(transactionTemplate.execute(status -> {
             Optional<Reaction> existingOpt = handler.findExisting(userId, request.getTargetId());
             if (existingOpt.isPresent()) {
                 Reaction existing = existingOpt.get();
                 reactionRepository.delete(existing);
+
+                return false;
             } else {
                 Reaction reaction = Reaction.builder()
                         .user(User.builder().id(userId).build())
@@ -72,17 +70,16 @@ public class ReactionServiceImpl implements ReactionService {
                 handler.setTargetId(reaction, request.getTargetId());
                 reactionRepository.save(reaction);
 
-                if (request.getTargetType() == ReactionTargetType.POST) {
-                    postsRepository.findById(request.getTargetId()).ifPresent(post -> {
-                        // Nếu Post này có gắn POI, kích hoạt chạy ngầm Tracking sinh Vector
-                        if (post.getPoi() != null) {
-                            userVectorTrackingService.trackUserPreferenceOnLike(userId, post.getPoi().getId());
-                        }
-                    });
-                }
+                return true;
             }
-            return null;
-        });
+        }));
+
+        userVectorTrackingService.handleReactionToggle(
+                userId,
+                request.getTargetId(),
+                request.getTargetType(),
+                isLike
+        );
     }
 
     @Override

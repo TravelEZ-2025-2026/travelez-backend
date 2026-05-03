@@ -1,6 +1,8 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
 import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
+import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
@@ -39,7 +41,7 @@ public class Phase6Enrichment {
             response = gson.fromJson(finalJson, ItineraryResponse.class);
         } catch (Exception e) {
             log.error("Failed to parse Final LLM JSON: {}", finalJson, e);
-            throw new RuntimeException("Could not parse AI generated itinerary into ItineraryResponse");
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Could not parse AI generated itinerary into ItineraryResponse");
         }
 
         if (response == null || response.getDays() == null) {
