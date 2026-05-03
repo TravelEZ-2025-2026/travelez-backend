@@ -56,7 +56,7 @@ public class Phase5Correction {
                     Map<String, Object> m = new HashMap<>();
                     m.put("poi_id", p.getId());
                     m.put("name", p.getName());
-                    m.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
+                    m.put("poi_type", p.getPoiType() != null ? p.getPoiType() : "OTHER");
                     m.put("address", p.getAddress() != null ? p.getAddress() : "");
                     //m.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
                     m.put("description", p.getDescription() != null ? p.getDescription() : "");
@@ -86,7 +86,7 @@ public class Phase5Correction {
             return fixedJson;
         } catch (Exception e) {
             log.error("Failed to repair itinerary in Phase 5", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Unable to fix AI error at this time.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 

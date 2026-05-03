@@ -2,6 +2,7 @@ package com.example.travelez.backend.ai.pipeline.subsystem;
 
 import com.example.travelez.backend.ai.pipeline.model.EvaluationReport;
 import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
+import com.example.travelez.backend.ai.pipeline.model.PoiVectorResult;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
@@ -65,8 +66,8 @@ public class Phase4Evaluation {
         }
 
         // Lấy danh sách POI gốc từ context
-        Map<Long, Poi> poiMap = context.getRetrievedPois().stream()
-                .collect(Collectors.toMap(Poi::getId, p -> p, (p1, p2) -> p1));
+        Map<Long, PoiVectorResult> poiMap = context.getRetrievedPois().stream()
+                .collect(Collectors.toMap(PoiVectorResult::getId, p -> p, (p1, p2) -> p1));
 
         Set<Long> globalPoiIds = new HashSet<>();
 
@@ -106,7 +107,7 @@ public class Phase4Evaluation {
             if (activities == null || activities.isEmpty()) continue;
 
             LocalTime previousEndTime = null;
-            Poi previousPoi = null;
+            PoiVectorResult previousPoi = null;
 
             // Lấy ra Ngày và Tính thứ (dow). (VD: Thứ Hai = 2, CN = 8)
             LocalDate currentDate = tripStartDate.plusDays(day.getDayIndex() - 1);
@@ -115,7 +116,7 @@ public class Phase4Evaluation {
 
             for (int i = 0; i < activities.size(); i++) {
                 ActivityDTO act = activities.get(i);
-                Poi currentPoi = poiMap.get(act.getId());
+                PoiVectorResult currentPoi = poiMap.get(act.getId());
 
                 if (!duplicateCheckIds.add(act.getId())) {
                     errors.add("[DUPLICATE VIOLATION] POI ID " + act.getId() + " is duplicated in the itinerary.");

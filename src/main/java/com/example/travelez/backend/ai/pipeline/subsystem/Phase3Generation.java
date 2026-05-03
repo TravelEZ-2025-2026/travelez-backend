@@ -1,12 +1,12 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
+import com.example.travelez.backend.ai.pipeline.model.PoiVectorResult;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.infrastructure.gemini.GeminiService;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
-import com.example.travelez.backend.poi.model.Poi;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class Phase3Generation {
         log.info("--- [PHASE 3] Generating itinerary (pure LLM) ---");
 
         ItineraryCreationRequest reqData = context.getOriginalRequest();
-        List<Poi> poiPool = context.getRetrievedPois();
+        List<PoiVectorResult> poiPool = context.getRetrievedPois();
 
         if (poiPool == null || poiPool.isEmpty()) {
             throw new ApiException(ResultCode.VALIDATION_FAILED, "No suitable location found for this request.");
@@ -46,7 +46,7 @@ public class Phase3Generation {
                     Map<String, Object> map = new HashMap<>();
                     map.put("poi_id", p.getId());
                     map.put("name", p.getName());
-                    map.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
+                    map.put("poi_type", p.getPoiType() != null ? p.getPoiType() : "OTHER");
                     map.put("address", p.getAddress() != null ? p.getAddress() : "");
                     map.put("rating", p.getRating() != null ? p.getRating() : 3.0);
                     //map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
@@ -84,7 +84,7 @@ public class Phase3Generation {
             return rawJsonResponse;
         } catch (Exception e) {
             log.error("Failed to generate itinerary in Phase 3", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI cannot generate a schedule right now.");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 
@@ -155,7 +155,9 @@ public class Phase3Generation {
             User trip context:
             %s
             
-            Candidate POIs (use address/hours/semantic_text to plan):
+            CANDIDATE POIS (CRITICAL INSTRUCTION - ALREADY PRE-SORTED):
+            The POIs below have been mathematically sorted by our Vector AI. The items at the TOP of this list are the STRONGEST matches for the user's personal semantic profile.
+            Strongly prioritize selecting POIs from the top of the list unless routing, opening hours, or category limits strictly forbid it:
             %s
             """.formatted(
                 preferredMin,
@@ -178,7 +180,7 @@ public class Phase3Generation {
             Map<String, Object> map = new HashMap<>();
             map.put("poi_id", p.getId());
             map.put("name", p.getName());
-            map.put("poi_type", p.getPoiType() != null ? p.getPoiType().name() : "OTHER");
+            map.put("poi_type", p.getPoiType() != null ? p.getPoiType() : "OTHER");
             map.put("semantic_text", p.getSemanticText() != null ? p.getSemanticText() : "");
             return map;
         }).collect(Collectors.toList());
@@ -215,7 +217,7 @@ public class Phase3Generation {
             return rawJsonResponse;
         } catch (Exception e) {
             log.error("Phase 3 REPLAN Generation failed: ", e);
-            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Failed to generate REPLAN in Phase 3");
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "The AI model is currently overloaded and unable to respond.");
         }
     }
 
@@ -293,7 +295,9 @@ public class Phase3Generation {
             }
             Note: `id` in activities MUST be the exact integer `poi_id` from Candidate POIs.
 
-            CANDIDATE POIS TO CHOOSE FROM (Already filtered, rejected POIs removed):
+            CANDIDATE POIS TO CHOOSE FROM (CRITICAL INSTRUCTION - ALREADY FILTERED & SORTED):
+            These POIs have been mathematically sorted by our Vector AI. The items at the TOP are the best matching alternatives based on the user's profile.
+            Strongly prioritize top POIs unless you are replacing them with something that better addresses the user's Replan feedback:
             %s
             """.formatted(
                 tripContext.get("feedback_notes"),

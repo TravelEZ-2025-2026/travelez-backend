@@ -14,6 +14,7 @@ import com.example.travelez.backend.reaction.repository.ReactionRepository;
 import com.example.travelez.backend.reaction.service.ReactionService;
 import com.example.travelez.backend.social.service.FollowService;
 import com.example.travelez.backend.users.model.User;
+import com.example.travelez.backend.users.service.impl.UserVectorTrackingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,8 @@ public class ReactionServiceImpl implements ReactionService {
 
     private final ReactionMapper reactionMapper;
 
+    private final UserVectorTrackingService userVectorTrackingService;
+
     @Override
     public void toggleReaction(ReactionToggleRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -53,20 +56,30 @@ public class ReactionServiceImpl implements ReactionService {
             throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to interact with this target");
         }
 
-        transactionTemplate.execute(status -> {
+        boolean isLike = Boolean.TRUE.equals(transactionTemplate.execute(status -> {
             Optional<Reaction> existingOpt = handler.findExisting(userId, request.getTargetId());
             if (existingOpt.isPresent()) {
                 Reaction existing = existingOpt.get();
                 reactionRepository.delete(existing);
+
+                return false;
             } else {
                 Reaction reaction = Reaction.builder()
                         .user(User.builder().id(userId).build())
                         .build();
                 handler.setTargetId(reaction, request.getTargetId());
                 reactionRepository.save(reaction);
+
+                return true;
             }
-            return null;
-        });
+        }));
+
+        userVectorTrackingService.handleReactionToggle(
+                userId,
+                request.getTargetId(),
+                request.getTargetType(),
+                isLike
+        );
     }
 
     @Override

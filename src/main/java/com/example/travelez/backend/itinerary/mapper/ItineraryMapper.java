@@ -2,11 +2,13 @@ package com.example.travelez.backend.itinerary.mapper;
 
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
+import com.example.travelez.backend.itinerary.dto.response.SharedUserSearchResponse;
 import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
+import com.example.travelez.backend.itinerary.model.ItinerarySharedUser;
 import com.example.travelez.backend.itinerary.model.enums.ItineraryStatus;
 import com.example.travelez.backend.itinerary.util.ItineraryUtils;
 import com.example.travelez.backend.poi.model.Poi;
@@ -99,4 +101,11 @@ public interface ItineraryMapper {
             dto.setTitle("Địa điểm tự do");
         }
     }
+
+    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "avatarUrl", source = "user.avatar.url") // MapStruct tự động check null user.avatar
+    @Mapping(target = "sharedAt", source = "createdAt")
+    SharedUserSearchResponse toSharedUserSearchResponse(ItinerarySharedUser sharedUser);
+
 }

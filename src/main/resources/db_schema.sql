@@ -68,6 +68,12 @@ CREATE TABLE provider (
     CONSTRAINT fk_provider_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE user_profile_vector (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    profile_vector vector(768),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================
 -- PLACE & WARD & MEDIA
 -- ============================================

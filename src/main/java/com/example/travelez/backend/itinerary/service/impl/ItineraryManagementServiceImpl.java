@@ -4,6 +4,7 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
+import com.example.travelez.backend.itinerary.dto.response.SharedUserSearchResponse;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItinerarySharedUser;
@@ -111,6 +112,25 @@ public class ItineraryManagementServiceImpl implements ItineraryManagementServic
                 itineraries.getNumber(),
                 itineraries.isEmpty()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SharedUserSearchResponse> searchSharedUsers(Long itineraryId, String keyword) {
+        UserPrinciple currentUser = getCurrentUser();
+
+        Itinerary itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
+
+        if (!Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId())) {
+            throw new ApiException(ResultCode.FORBIDDEN, "Only owner can search shared users");
+        }
+
+        List<ItinerarySharedUser> sharedUsers = sharedUserRepository.searchSharedUsersByKeyword(itineraryId, keyword);
+
+        return sharedUsers.stream()
+                .map(itineraryMapper::toSharedUserSearchResponse)
+                .toList();
     }
 
     @Override

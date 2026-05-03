@@ -4,6 +4,7 @@ import com.example.travelez.backend.common.api.BaseResponse;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
+import com.example.travelez.backend.itinerary.dto.response.SharedUserSearchResponse;
 import com.example.travelez.backend.itinerary.service.ItineraryManagementService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/management/itineraries")
@@ -46,6 +49,15 @@ public class ItineraryManagementController {
         CommonPage<ItinerarySummaryResponse> result = itineraryManagementService.getSharedWithMeItineraries(pageable);
 
         return BaseResponse.success(result, ResultCode.SUCCESS);
+    }
+
+    @GetMapping("/{id}/shared-users/search")
+    public ResponseEntity<BaseResponse<List<SharedUserSearchResponse>>> searchSharedUsers(
+            @PathVariable Long id,
+            @RequestParam String keyword) {
+
+        List<SharedUserSearchResponse> result = itineraryManagementService.searchSharedUsers(id, keyword);
+        return BaseResponse.success(result, ResultCode.SUCCESS, "Search shared users successfully");
     }
 
     @PostMapping("/{id}/export-calendar")

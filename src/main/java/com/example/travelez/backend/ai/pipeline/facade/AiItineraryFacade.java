@@ -11,8 +11,13 @@ import com.example.travelez.backend.ai.pipeline.subsystem.Phase6Enrichment;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
+import com.example.travelez.backend.security.component.UserPrinciple;
+import com.example.travelez.backend.users.model.UserProfileVector;
+import com.example.travelez.backend.users.repository.UserProfileVectorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -28,19 +33,41 @@ public class AiItineraryFacade {
     private final Phase4Evaluation evaluator;
     private final Phase5Correction corrector;
     private final Phase6Enrichment enricher;
+    private final UserProfileVectorRepository userProfileVectorRepository;
+
+    private String getCurrentUserProfileVector() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
+        }
+
+        // Ép kiểu để lấy ID
+        UserPrinciple principle = (UserPrinciple) authentication.getPrincipal();
+        Long userId = principle.getUserId();
+
+        return userProfileVectorRepository.findById(userId)
+                .map(UserProfileVector::getProfileVector)
+                .filter(vector -> !vector.isBlank())
+                .orElse(null);
+    }
 
     public ItineraryResponse orchestratePipeline(ItineraryCreationRequest request) {
         log.info("================ STARTING AI ITINERARY PIPELINE ================");
 
+        // 1. Lấy thông tin Vector Sở thích của User đang gọi API
+        String userProfileVector = getCurrentUserProfileVector();
+
         PipelineContext context = PipelineContext.builder()
                 .originalRequest(request)
+                .userProfileVector(userProfileVector)
                 .build();
 
         // PHASE 1: Tạo Search Queries
         context.setSearchQueries(compiler.generateSearchQueries(request));
 
         // PHASE 2: Tìm POI tương đồng bằng pgvector
-        context.setRetrievedPois(retriever.retrieveMatchingPois(context.getSearchQueries()));
+        context.setRetrievedPois(retriever.retrieveMatchingPois(context));
 
         // PHASE 3: Sinh Lịch Trình (Raw JSON từ LLM)
         context.setRawLlmResponse(generator.generateItinerary(context));
@@ -48,7 +75,7 @@ public class AiItineraryFacade {
         // PHASE 4: Kiểm duyệt bằng Logic OSRM, Giờ mở cửa, Budget
         EvaluationReport report = evaluator.evaluate(context);
 
-        // PHASE 5: Tự Sửa Lỗi (Self-correction) nếu Phase 4 gặp lỗi
+        // PHASE 5: Tự Sửa Lỗi nếu Phase 4 gặp lỗi
         if (!report.isPassed()) {
             log.warn("Phase 4 caught errors ({}). Initiating Phase 5 (LLM2 Correction)...", report.getErrors().size());
             String fixedJson = corrector.fixItineraryWithLlm2(context, report);
@@ -75,15 +102,18 @@ public class AiItineraryFacade {
     public ItineraryResponse orchestrateReplanPipeline(ItineraryReplanRequest request) {
         log.info("================ STARTING AI REPLAN PIPELINE ================");
 
+        String userProfileVector = getCurrentUserProfileVector();
+
         PipelineContext context = PipelineContext.builder()
                 .originalRequest(request)
+                .userProfileVector(userProfileVector)
                 .build();
 
         // PHASE 1: Tạo Search Queries
         context.setSearchQueries(compiler.generateSearchQueries(request));
 
         // PHASE 2: Tìm POI tương đồng & Lọc bỏ các POI user đã reject
-        context.setRetrievedPois(retriever.retrieveForReplan(request, context.getSearchQueries()));
+        context.setRetrievedPois(retriever.retrieveForReplan(request, context));
 
         // PHASE 3: Replan lịch trình
         String replanJson = generator.generateReplanItinerary(context, request);

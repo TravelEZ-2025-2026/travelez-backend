@@ -1,6 +1,8 @@
 package com.example.travelez.backend.ai.pipeline.subsystem;
 
 import com.example.travelez.backend.ai.pipeline.model.PipelineContext;
+import com.example.travelez.backend.common.api.ResultCode;
+import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
 import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
@@ -39,7 +41,7 @@ public class Phase6Enrichment {
             response = gson.fromJson(finalJson, ItineraryResponse.class);
         } catch (Exception e) {
             log.error("Failed to parse Final LLM JSON: {}", finalJson, e);
-            throw new RuntimeException("Could not parse AI generated itinerary into ItineraryResponse");
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Could not parse AI generated itinerary into ItineraryResponse");
         }
 
         if (response == null || response.getDays() == null) {
@@ -68,7 +70,7 @@ public class Phase6Enrichment {
         }
 
         // Bước 3: Lấy thông tin đầy đủ nhất từ Database
-        List<Poi> pois = poiRepository.findAllById(poiIds);
+        List<Poi> pois = poiRepository.findPoisWithDetailsByIds(poiIds);
         Map<Long, Poi> poiMap = pois.stream()
                 .collect(Collectors.toMap(Poi::getId, p -> p));
 
@@ -78,35 +80,31 @@ public class Phase6Enrichment {
                 for (ActivityDTO act : day.getActivities()) {
                     Poi realPoi = poiMap.get(act.getId());
                     if (realPoi != null) {
-                        // 1. Ghi đè tuyệt đối các thông tin từ DB để tránh AI bịa data
                         act.setTitle(realPoi.getName());
                         act.setAddress(realPoi.getAddress());
                         act.setLat(realPoi.getLatitude());
                         act.setLng(realPoi.getLongitude());
 
-                        // 2. Ép cứng Type về chuẩn của DB
                         if (realPoi.getPoiType() != null) {
                             act.setActivityType(realPoi.getPoiType().name());
                         }
 
-                        // Ưu tiên chọn ảnh đầu tiên làm Cover
                         if (realPoi.getMedias() != null && !realPoi.getMedias().isEmpty()) {
                             act.setImage(realPoi.getMedias().get(0).getUrl());
                         } else {
                             act.setImage(null);
                         }
 
-                        // Giữ lại startTime, endTime, price, aiTip từ AI. Nếu giá null thì set 0.
                         if (act.getPrice() == null) {
                             act.setPrice(BigDecimal.ZERO);
                         }
-                    } else { // Trường hợp ID AI trả về không tồn tại trong DB
+                    } else {
                         if (act.getTitle() == null) {
                             act.setTitle("Hoạt động tự do");
                         }
                         act.setAddress("N/A");
                         act.setImage(null);
-                        act.setActivityType("OTHER"); // Set một type an toàn mặc định
+                        act.setActivityType("OTHER");
                         act.setLat(0.0);
                         act.setLng(0.0);
                         if (act.getPrice() == null) act.setPrice(BigDecimal.ZERO);
@@ -124,16 +122,14 @@ public class Phase6Enrichment {
             return "{}";
         }
 
-        // 1. Cắt bỏ bọc Markdown ```json ... ``` nếu có
         String cleanStr = rawLlmResponse.trim();
         if (cleanStr.startsWith("```")) {
             cleanStr = cleanStr.replaceAll("^```(json)?|```$", "").trim();
         }
 
-        // 2. Thuật toán lấy block JSON cân bằng dấu ngoặc (đề phòng đuôi } } ] dư thừa)
         int startIndex = cleanStr.indexOf('{');
         if (startIndex == -1) {
-            return cleanStr; // Không tìm thấy object JSON
+            return cleanStr;
         }
 
         int balance = 0;
@@ -146,13 +142,12 @@ public class Phase6Enrichment {
                 balance--;
                 if (balance == 0) {
                     endIndex = i;
-                    break; // Đã tìm thấy ngoặc đóng cân bằng của Object bao ngoài cùng
+                    break;
                 }
             }
         }
 
         if (endIndex != -1) {
-            // Chỉ lấy từ { đầu tiên đến } cân bằng cuối cùng
             return cleanStr.substring(startIndex, endIndex + 1);
         }
 
