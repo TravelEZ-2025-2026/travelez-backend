@@ -1,6 +1,7 @@
 package com.example.travelez.backend.posts.repository;
 
 import com.example.travelez.backend.posts.model.Posts;
+import com.example.travelez.backend.posts.model.enums.PostStatus;
 import com.example.travelez.backend.posts.repository.projection.TopPoiProjection;
 import com.example.travelez.backend.posts.repository.projection.TopTagProjection;
 
@@ -59,6 +60,7 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
 
     boolean existsByIdAndUserId(Long postId, Long userId);
 
+    boolean existsByIdAndStatus(Long postId, PostStatus status);
 
     @EntityGraph(attributePaths = {"user", "poi", "poi.ward", "poi.place"})
     Page<Posts> findAll(Specification<Posts> specification, Pageable pageable);

@@ -15,6 +15,7 @@ public class MediaDatabaseConfig {
         registry.put(MediaTarget.POST, new RelationTableDef("media_posts", "post_id"));
         registry.put(MediaTarget.COMMENT, new RelationTableDef("media_comment", "comment_id"));
         registry.put(MediaTarget.MESSAGE, new RelationTableDef("media_message", "message_id"));
+        registry.put(MediaTarget.REPORT, new RelationTableDef("media_reports", "report_id"));
         return registry;
     }
 
