@@ -161,4 +161,38 @@ public interface PoiRepository extends JpaRepository<Poi, Long>, JpaSpecificatio
             @Param("userVector") String userVector,
             @Param("kLimit") int kLimit
     );
+
+    @Query(value = """
+            SELECT p.* FROM place_of_interest p 
+            WHERE p.system_status = 'ACTIVE' AND p.status = 'OPERATIONAL'
+            ORDER BY p.gemini_vector <=> cast(:embeddingStr as vector) ASC 
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Poi> findClosestPoisByVector(@Param("embeddingStr") String embeddingStr, @Param("limit") int limit);
+
+    @Query(value = """
+            SELECT p.name AS poiName, i.experience_category, i.mention_count, i.top_keywords 
+            FROM place_of_interest p 
+            JOIN poi_experience_insight i ON p.id = i.poi_id 
+            WHERE p.id IN :poiIds
+            """, nativeQuery = true)
+    List<Object[]> findInsightsByPoiIds(@org.springframework.data.repository.query.Param("poiIds") java.util.List<Long> poiIds);
+
+    @Query(value = """
+            WITH RankedPois AS (
+                SELECT 
+                    p.name AS poiName, 
+                    i.experience_category AS category, 
+                    i.mention_count AS mentions,
+                    p.description AS poi_desc,
+                    ROW_NUMBER() OVER(PARTITION BY i.experience_category ORDER BY i.mention_count DESC) as rn
+                FROM place_of_interest p
+                JOIN poi_experience_insight i ON p.id = i.poi_id
+                WHERE p.status = 'OPERATIONAL' AND p.system_status = 'ACTIVE'
+            )
+            SELECT poiName, category, mentions, poi_desc 
+            FROM RankedPois 
+            WHERE rn <= 3
+            """, nativeQuery = true)
+    List<Object[]> getRecommendationPool();
 }

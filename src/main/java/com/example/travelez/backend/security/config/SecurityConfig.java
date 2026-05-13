@@ -47,6 +47,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("api/itineraries/**").permitAll()
                         .requestMatchers("api/management/itineraries/**").permitAll()
+                        .requestMatchers("api/itinerary-enhancement/**").permitAll()
                         .requestMatchers("/api/sso/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/pois/**").permitAll()
