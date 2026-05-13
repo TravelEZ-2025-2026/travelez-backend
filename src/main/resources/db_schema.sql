@@ -447,3 +447,56 @@ CREATE TABLE itinerary_enhancement_history (
    analysis_result JSONB,
    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ============================================
+-- CREATE VIEWS FOR BUSINESS
+-- ============================================
+
+-- View 1
+CREATE OR REPLACE VIEW view_bi_missing_gaps AS
+SELECT
+    additions.elem ->> 'targetGap' AS gap_type,
+    additions.elem ->> 'proposedPoi' AS recommended_poi,
+    COUNT(*) as frequency
+FROM itinerary_enhancement_history h,
+    jsonb_array_elements(h.analysis_result -> 'suggestedAdditions') AS additions(elem)
+WHERE h.analysis_result IS NOT NULL
+  AND jsonb_typeof(h.analysis_result -> 'suggestedAdditions') = 'array' -- Chỉ bung ra nếu nó thực sự là mảng
+GROUP BY gap_type, recommended_poi
+ORDER BY frequency DESC;
+
+-- View 2
+CREATE OR REPLACE VIEW view_bi_persona_analytics AS
+SELECT
+    CASE
+        WHEN provider_prompt ILIKE '%gen z%' OR provider_prompt ILIKE '%trẻ%' OR provider_prompt ILIKE '%millennials%' THEN 'Gen Z / Youth'
+        WHEN provider_prompt ILIKE '%gia đình%' OR provider_prompt ILIKE '%family%' OR provider_prompt ILIKE '%trẻ em%' THEN 'Family'
+        WHEN provider_prompt ILIKE '%cặp đôi%' OR provider_prompt ILIKE '%couple%' OR provider_prompt ILIKE '%lãng mạn%' THEN 'Couple'
+        WHEN provider_prompt ILIKE '%công ty%' OR provider_prompt ILIKE '%corporate%' OR provider_prompt ILIKE '%teambuilding%' THEN 'Corporate'
+        ELSE 'General / Mixed'
+END AS target_persona,
+    COUNT(id) as total_queries
+FROM itinerary_enhancement_history
+WHERE analysis_result IS NOT NULL
+GROUP BY target_persona;
+
+-- View 3
+CREATE OR REPLACE VIEW view_bi_insight_heatmap AS
+SELECT
+    p.name AS poi_name,
+    i.experience_category,
+    i.mention_count
+FROM place_of_interest p
+         JOIN poi_experience_insight i ON p.id = i.poi_id
+WHERE p.system_status = 'ACTIVE'
+  AND i.mention_count > 0
+ORDER BY i.mention_count DESC;
+
+-- View 4
+CREATE OR REPLACE VIEW view_bi_experience_trends AS
+SELECT
+    experience_category,
+    SUM(mention_count) AS total_mentions
+FROM poi_experience_insight
+GROUP BY experience_category
+ORDER BY total_mentions DESC;
