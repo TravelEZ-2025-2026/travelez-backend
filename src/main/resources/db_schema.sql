@@ -18,6 +18,7 @@ CREATE TYPE auth_provider AS ENUM ('LOCAL', 'GOOGLE');
 CREATE TYPE role_conversation AS ENUM ('MEMBER', 'ADMIN');
 CREATE TYPE conversation_type AS ENUM ('PRIVATE', 'GROUP');
 CREATE TYPE experience_category AS ENUM ('PHOTO', 'FOOD', 'NIGHTLIFE', 'LOCAL_CULTURE', 'COUPLE', 'FAMILY');
+create type action_type as ENUM('BAN', 'UNBAN');
 -- CREATE TYPE report_reason_enum AS ENUM (
 --     'SPAM', 'HARASSMENT', 'HATE_SPEECH', 'FALSE_INFORMATION', 'INAPPROPRIATE_CONTENT','INTELLECTUAL_PROPERTY_INFRINGEMENT', 'OTHER'
 -- );
@@ -446,6 +447,14 @@ CREATE TABLE itinerary_enhancement_history (
    provider_prompt TEXT,
    analysis_result JSONB,
    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE user_action_logs (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT null REFERENCES users(id) ON DELETE CASCADE,
+    action_type action_type NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================
