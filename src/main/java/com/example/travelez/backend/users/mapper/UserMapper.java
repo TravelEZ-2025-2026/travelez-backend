@@ -1,6 +1,8 @@
 package com.example.travelez.backend.users.mapper;
 
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
+import com.example.travelez.backend.users.dto.response.AdminUserResponse;
+import com.example.travelez.backend.users.dto.response.UserAdminDetailResponse;
 import com.example.travelez.backend.users.dto.response.UserDetailResponse;
 import com.example.travelez.backend.users.dto.response.UserSummaryResponse;
 import com.example.travelez.backend.users.model.Admin;
@@ -37,4 +39,8 @@ public interface UserMapper {
 
     @Mapping(target = "userId", source = "id")
     UserSummaryResponse toUserSummary(User user);
+
+    AdminUserResponse toAdminUserResponse(User user);
+
+    UserAdminDetailResponse toUserAdminDetailResponse(User user);
 }
