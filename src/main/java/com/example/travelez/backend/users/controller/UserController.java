@@ -20,13 +20,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.travelez.backend.users.dto.request.UserUpdateRequest;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -81,5 +78,11 @@ public class UserController {
         }
         MediaBaseResponse response = userService.updateUserCover(file);
         return BaseResponse.success(response, ResultCode.SUCCESS, "User cover updated successfully");
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<BaseResponse<UserDetailResponse>> updateUserInfo(@Valid @RequestBody UserUpdateRequest request) {
+        UserDetailResponse response = userService.updateUserInfo(request);
+        return BaseResponse.success(response, ResultCode.SUCCESS, "User information updated successfully");
     }
 }
