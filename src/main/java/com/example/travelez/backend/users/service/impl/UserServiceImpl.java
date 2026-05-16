@@ -14,7 +14,10 @@ import com.example.travelez.backend.media.service.MediaService;
 import com.example.travelez.backend.security.util.JwtUtil;
 import com.example.travelez.backend.social.dto.internal.RelationshipStatus;
 import com.example.travelez.backend.social.service.FollowService;
+import com.example.travelez.backend.users.dto.request.AdminUserFilterRequest;
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
+import com.example.travelez.backend.users.dto.request.UserUpdateRequest;
+import com.example.travelez.backend.users.dto.response.AdminUserResponse;
 import com.example.travelez.backend.users.dto.response.UserDetailResponse;
 import com.example.travelez.backend.users.dto.response.UserLoginResponse;
 import com.example.travelez.backend.users.factory.UserFactory;
@@ -25,7 +28,11 @@ import com.example.travelez.backend.users.model.enums.UserStatus;
 import com.example.travelez.backend.users.repository.UserRepository;
 import com.example.travelez.backend.users.repository.specification.UserSpecification;
 import com.example.travelez.backend.users.service.UserService;
+
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -46,6 +53,9 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    @Value("${travelez.secret-code}")
+    private String secretCode;
 
     private final TransactionTemplate transactionTemplate;
 
@@ -68,7 +78,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User register(UserRegisterRequest request) {
 
-        if (request.getRole() == RoleType.ADMIN) {
+        if (request.getRole() == RoleType.ADMIN && !request.getSecretCode().equals(secretCode)) {
             Asserts.fail(ResultCode.FORBIDDEN, "Admin registration is not allowed");
         }
         Optional<User> existingUser = userRepository.findByUsername(request.getUsername());
@@ -224,6 +234,29 @@ public class UserServiceImpl implements UserService {
             }
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, "Failed to update cover: " + e.getMessage());
         }
+    }
+
+    @Override
+    public UserDetailResponse updateUserInfo(UserUpdateRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "User not found"));
+
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getEmail() != null) {
+            user.setEmail(request.getEmail());
+        }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        if (request.getDob() != null) {
+            user.setDob(request.getDob());
+        }
+
+        userRepository.save(user);
+        return userMapper.toUserDetailResponse(user, false, false);
     }
 
     private CommonPage<UserDetailResponse> getUsersPageResponse(Page<User> page, Pageable pageable) {

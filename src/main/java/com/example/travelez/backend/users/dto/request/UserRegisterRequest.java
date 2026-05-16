@@ -33,4 +33,6 @@ public class UserRegisterRequest {
     //    @NotBlank(message = "Recaptcha token is required")
     private String recaptchaToken;
 
+    private String secretCode;
+
 }
