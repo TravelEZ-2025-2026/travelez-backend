@@ -32,3 +32,12 @@ build/
 .vscode/
 .env
 gcs-key.json
+
+k6-reports/
+openspec/
+.gemini/
+.kiro/
+docs/plans/
+docs/AI_QUICK_START.md
+docs/DEVELOPMENT_GUIDE.md
+docs/WORKING_GUIDELINES.md

@@ -8,3 +8,7 @@ mvnw.cmd
 .env
 .dockerignore
 HELP.md
+
+k6-reports/
+docs/
+openspec/
