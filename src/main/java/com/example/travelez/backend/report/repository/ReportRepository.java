@@ -71,4 +71,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     Long countByPostId(Long postId);
 
     Long countByPostIdAndStatus(Long postId, ReportStatus status);
+
+    Long countByStatus(ReportStatus status);
 }

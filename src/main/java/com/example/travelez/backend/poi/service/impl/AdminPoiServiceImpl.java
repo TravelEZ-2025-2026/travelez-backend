@@ -4,6 +4,8 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
+import com.example.travelez.backend.dashboard.model.enums.ActivityCategory;
+import com.example.travelez.backend.dashboard.service.impl.AuditLogService;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.media.service.MediaService;
 import com.example.travelez.backend.poi.dto.request.AdminPoiFilterRequest;
@@ -37,6 +39,8 @@ public class AdminPoiServiceImpl implements AdminPoiService {
     private final MediaService mediaService;
 
     private final PoiMapper poiMapper;
+
+    private final AuditLogService auditLogService;
 
     @Override
     public PoiStatResponse getStatistics(Long placeId, Long wardId) {
@@ -97,6 +101,12 @@ public class AdminPoiServiceImpl implements AdminPoiService {
             Asserts.fail(ResultCode.NOT_FOUND, "Poi not found");
         }
         poiRepository.softDeleteById(poiId);
+
+        auditLogService.logActivity(
+                ActivityCategory.SYSTEM,
+                "Admin manually deleted POI ID #" + poiId + " from the system",
+                "Action Taken"
+        );
     }
 
 }

@@ -19,6 +19,7 @@ CREATE TYPE role_conversation AS ENUM ('MEMBER', 'ADMIN');
 CREATE TYPE conversation_type AS ENUM ('PRIVATE', 'GROUP');
 CREATE TYPE experience_category AS ENUM ('PHOTO', 'FOOD', 'NIGHTLIFE', 'LOCAL_CULTURE', 'COUPLE', 'FAMILY');
 create type action_type as ENUM('BAN', 'UNBAN');
+CREATE TYPE system_activity_category AS ENUM ('USER', 'CONTENT', 'SYSTEM');
 -- CREATE TYPE report_reason_enum AS ENUM (
 --     'SPAM', 'HARASSMENT', 'HATE_SPEECH', 'FALSE_INFORMATION', 'INAPPROPRIATE_CONTENT','INTELLECTUAL_PROPERTY_INFRINGEMENT', 'OTHER'
 -- );
@@ -455,6 +456,14 @@ CREATE TABLE user_action_logs (
     action_type action_type NOT NULL,
     reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE system_activity_logs (
+      id BIGSERIAL PRIMARY KEY,
+      category system_activity_category NOT NULL,
+      description TEXT NOT NULL,
+      status VARCHAR(50) NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================

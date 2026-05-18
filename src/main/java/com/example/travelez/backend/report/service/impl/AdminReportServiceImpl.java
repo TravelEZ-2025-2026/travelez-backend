@@ -3,6 +3,8 @@ package com.example.travelez.backend.report.service.impl;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
+import com.example.travelez.backend.dashboard.model.enums.ActivityCategory;
+import com.example.travelez.backend.dashboard.service.impl.AuditLogService;
 import com.example.travelez.backend.posts.repository.PostsRepository;
 import com.example.travelez.backend.report.dto.request.AdminRejectReportRequest;
 import com.example.travelez.backend.report.dto.request.ReportedItemsFilterRequest;
@@ -44,6 +46,8 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final PostsRepository postsRepository;
     
     private final ReportMapper reportMapper;
+
+    private final AuditLogService auditLogService;
     
     @Override
     @Transactional
@@ -56,6 +60,12 @@ public class AdminReportServiceImpl implements AdminReportService {
             report.setStatus(ReportStatus.REJECTED);
         }
         reportRepository.saveAll(pendingReports);
+
+        auditLogService.logActivity(
+                ActivityCategory.CONTENT,
+                "Admin rejected " + pendingReports.size() + " pending reports for " + request.getTargetType() + " ID #" + request.getTargetId(),
+                "Action Taken"
+        );
 
         eventPublisher.publishEvent(new ReportProcessedEvent(pendingReports, ReportStatus.REJECTED));
     }

@@ -1,6 +1,7 @@
 package com.example.travelez.backend.users.repository;
 
 import com.example.travelez.backend.users.model.User;
+import com.example.travelez.backend.users.model.enums.UserStatus;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
@@ -31,4 +32,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Query("UPDATE User u SET u.followerCount = u.followerCount - 1 WHERE u.id = :id")
     void decrementFollowerCount(@Param("id") Long id);
 
+    long countByStatus(UserStatus status);
+    long countByCreatedAtBetween(java.time.LocalDateTime startDate, java.time.LocalDateTime endDate);
 }
