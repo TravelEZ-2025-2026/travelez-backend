@@ -38,6 +38,9 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
         long newPostsCount = postsRepository.count();
 
+        // -----------------------------------------------------------------
+        // MỐC THỜI GIAN ĐỂ TÍNH TOÁN
+        // -----------------------------------------------------------------
         YearMonth currentMonth = YearMonth.now();
         YearMonth lastMonth = currentMonth.minusMonths(1);
 
@@ -47,26 +50,54 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         LocalDateTime startOfLastMonth = lastMonth.atDay(1).atStartOfDay();
         LocalDateTime endOfLastMonth = lastMonth.atEndOfMonth().atTime(23, 59, 59);
 
+        // -----------------------------------------------------------------
+        // GROWTH PERCENT CHO TOTAL USERS
+        // -----------------------------------------------------------------
         long currentMonthUsers = userRepository.countByCreatedAtBetween(startOfCurrentMonth, endOfCurrentMonth);
-        long lastMonthUsers = userRepository.countByCreatedAtBetween(startOfLastMonth, endOfLastMonth);
+        long totalUsersUntilLastMonth = totalUsersCount - currentMonthUsers;
 
-        int growthPercent = 0;
-
-        if (lastMonthUsers == 0) {
-            growthPercent = currentMonthUsers > 0 ? 100 : 0;
-        } else {
-            double growth = ((double) (currentMonthUsers - lastMonthUsers) / lastMonthUsers) * 100;
-            growthPercent = (int) Math.round(growth);
+        Integer userGrowthPercent = null;
+        if (totalUsersUntilLastMonth >= 0) {
+            double growth = ((double) currentMonthUsers / totalUsersUntilLastMonth) * 100;
+            userGrowthPercent = (int) Math.round(growth);
+        } else if (totalUsersUntilLastMonth == 0 && currentMonthUsers > 0){
+            userGrowthPercent = 100;
+        }
+        else {
+            userGrowthPercent = 0;
         }
 
+        // -----------------------------------------------------------------
+        // GROWTH PERCENT CHO NEW CONTENT (POSTS)
+        // -----------------------------------------------------------------
+        long currentMonthPosts = postsRepository.countByCreatedAtBetween(startOfCurrentMonth, endOfCurrentMonth);
+        long lastMonthPosts = postsRepository.countByCreatedAtBetween(startOfLastMonth, endOfLastMonth);
+
+        Integer postsGrowthPercent = null;
+        if (lastMonthPosts > 0) {
+            double growth = ((double) (currentMonthPosts - lastMonthPosts) / lastMonthPosts) * 100;
+            postsGrowthPercent = (int) Math.round(growth);
+        } else if (currentMonthPosts > 0) {
+            postsGrowthPercent = 100;
+        }
+        else {
+            postsGrowthPercent = 0;
+        }
+
+        // -----------------------------------------------------------------
+        // BUILD RESPONSE
+        // -----------------------------------------------------------------
         return DashboardStatsResponse.builder()
                 .totalUsers(DashboardStatsResponse.StatDetail.builder()
                         .count(totalUsersCount)
-                        .growthPercent(growthPercent)
+                        .growthPercent(userGrowthPercent)
                         .build())
                 .lockedAccounts(DashboardStatsResponse.StatDetail.builder().count(lockedUsersCount).build())
                 .pendingReports(DashboardStatsResponse.StatDetail.builder().count(pendingReportsCount).build())
-                .newContent(DashboardStatsResponse.StatDetail.builder().count(newPostsCount).build())
+                .newContent(DashboardStatsResponse.StatDetail.builder()
+                        .count(newPostsCount)
+                        .growthPercent(postsGrowthPercent)
+                        .build())
                 .build();
     }
 

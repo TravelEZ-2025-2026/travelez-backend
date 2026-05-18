@@ -95,4 +95,6 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
     @EntityGraph(attributePaths = {"user"})
     @Query("SELECT p FROM Posts p WHERE p.id = :postId")
     Optional<Posts> findByPostId(@Param("postId") Long postId);
+
+    long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 }
