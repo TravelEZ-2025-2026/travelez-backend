@@ -3,6 +3,8 @@ package com.example.travelez.backend.users.service.impl;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
+import com.example.travelez.backend.dashboard.model.enums.ActivityCategory;
+import com.example.travelez.backend.dashboard.service.impl.AuditLogService;
 import com.example.travelez.backend.users.dto.request.AdminUserFilterRequest;
 import com.example.travelez.backend.users.dto.request.UserStatusUpdateRequest;
 import com.example.travelez.backend.users.dto.response.AdminUserResponse;
@@ -42,6 +44,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final BanUserHandler banUserHandler;
     private final UnbanUserHandler unbanUserHandler;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogService auditLogService;
 
     @Override
     public CommonPage<AdminUserResponse> getAllUsersForAdmin(AdminUserFilterRequest filter, Pageable pageable) {
@@ -97,6 +100,13 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         handler.handle(user, request.getReason());
         userRepository.save(user);
+
+        String statusText = request.getAction().name().equalsIgnoreCase("BAN") ? "locked" : "unlocked";
+        auditLogService.logActivity(
+                ActivityCategory.USER,
+                "Admin " + statusText + " account ID #" + userId + ". Reason: " + request.getReason(),
+                "Action Taken"
+        );
 
         UserStatusChangedEvent event = new UserStatusChangedEvent(
                 userId, 

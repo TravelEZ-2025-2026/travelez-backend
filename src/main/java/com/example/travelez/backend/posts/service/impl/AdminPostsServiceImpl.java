@@ -6,6 +6,8 @@ import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.utils.DateTimesUtils;
 import com.example.travelez.backend.common.utils.SecurityUtils;
+import com.example.travelez.backend.dashboard.model.enums.ActivityCategory;
+import com.example.travelez.backend.dashboard.service.impl.AuditLogService;
 import com.example.travelez.backend.posts.dto.request.AdminPostsFilterRequest;
 import com.example.travelez.backend.posts.dto.request.BanPostRequest;
 import com.example.travelez.backend.posts.dto.request.PostStatRequest;
@@ -54,6 +56,8 @@ public class AdminPostsServiceImpl implements AdminPostsService {
     private final CommentRepository commentRepository;
 
     private final PostsMapper postsMapper;
+
+    private final AuditLogService auditLogService;
 
     @Override
     public PostStatResponse getStatistics(PostStatRequest request) {
@@ -115,6 +119,13 @@ public class AdminPostsServiceImpl implements AdminPostsService {
         post.setStatus(PostStatus.BANNED);
         postsRepository.save(post);
         Long adminId = SecurityUtils.getCurrentUserId();
+
+        auditLogService.logActivity(
+                ActivityCategory.CONTENT,
+                "Admin ID #" + adminId + " banned Post #" + postId + ". Reason: " + request.getReason(),
+                "Action Taken"
+        );
+
         eventPublisher.publishEvent(new PostsStatusChangedEvent(post, adminId, post.getUser().getId(), oldStatus, PostStatus.BANNED, PostStatusAction.BANNED, request.getReason()));
     }
 
@@ -130,6 +141,13 @@ public class AdminPostsServiceImpl implements AdminPostsService {
         post.setStatus(PostStatus.PUBLISHED);
         postsRepository.save(post);
         Long adminId = SecurityUtils.getCurrentUserId();
+
+        auditLogService.logActivity(
+                ActivityCategory.CONTENT,
+                "Admin ID #" + adminId + " unbanned Post #" + postId,
+                "Action Taken"
+        );
+
         eventPublisher.publishEvent(new PostsStatusChangedEvent(post, adminId, post.getUser().getId(), oldStatus, PostStatus.PUBLISHED, PostStatusAction.UNBANNED, request.getReason()));
     }
 

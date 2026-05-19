@@ -94,7 +94,14 @@ public class Phase3Generation {
 
         return """
             You are generating the FIRST DRAFT of a multi-day travel itinerary.
-            Return ONLY valid JSON (no markdown). Do not use an outer wrapper like 'itinerary_result'.
+            
+            User trip context:
+            %s
+            
+            CANDIDATE POIS (CRITICAL INSTRUCTION - ALREADY PRE-SORTED):
+            The POIs below have been mathematically sorted by our Vector AI. The items at the TOP of this list are the STRONGEST matches for the user's personal semantic profile.
+            Strongly prioritize selecting POIs from the top of the list unless routing, opening hours, or category limits strictly forbid it:
+            %s
             
             PRE-STEP (MANDATORY INTERNAL REASONING - DO NOT OUTPUT):
                 - Read the user's `specialNotes`, `styles`, and explicit dates (`start_date` to `end_date`) carefully.
@@ -126,6 +133,10 @@ public class Phase3Generation {
             - `reasoningSummary`: Act as a professional, welcoming Travel Advisor. Write an engaging paragraph explaining how this trip captures their specific travel style. DO NOT mention technical logic, tiers, budget math, or routing constraints.
             - `aiTip`: Act as an expert local tour guide. Read the `description` of the POI and provide 1-2 sentences of highly specific, actionable advice (e.g., signature dish, specific photo angle, what to look out for). STRICTLY FORBIDDEN: Do not use generic filler phrases like "Great place for photos".
 
+            === FINAL OUTPUT INSTRUCTION (STRICT JSON ONLY) ===
+            You MUST return ONLY a fully valid JSON object. 
+            Do NOT include conversational text before or after the JSON.
+            Do NOT wrap the JSON in markdown blocks (e.g. no ``` or ```json).
             Output schema must exactly follow:
             {
               "tripTitle": "Catchy naming for this trip",
@@ -139,7 +150,7 @@ public class Phase3Generation {
                    "date": "YYYY-MM-DD",
                    "activities": [
                       {
-                        "id": 12345,
+                        "id": 12345,    // MUST map to exact poi_id from Candidate POIs
                         "startTime": "08:00",
                         "endTime": "09:30",
                         "activityName": "Short descriptive activity name",
@@ -151,21 +162,13 @@ public class Phase3Generation {
               ]
             }
             Note: `id` in activities MUST be the exact integer `poi_id` from Candidate POIs.
-            
-            User trip context:
-            %s
-            
-            CANDIDATE POIS (CRITICAL INSTRUCTION - ALREADY PRE-SORTED):
-            The POIs below have been mathematically sorted by our Vector AI. The items at the TOP of this list are the STRONGEST matches for the user's personal semantic profile.
-            Strongly prioritize selecting POIs from the top of the list unless routing, opening hours, or category limits strictly forbid it:
-            %s
             """.formatted(
+                tripContextJson,
+                poisJson,
                 preferredMin,
                 preferredMax,
                 hasKids,
-                numDays,
-                tripContextJson,
-                poisJson
+                numDays
         );
     }
 
@@ -231,7 +234,13 @@ public class Phase3Generation {
 
         return """
             You are an expert AI Travel Planner explicitly REVISING an existing multi-day travel itinerary.
-            Return ONLY valid JSON (no markdown). Do not use an outer wrapper.
+            
+            TRIP OVERVIEW:
+            - Style: %s
+            - Companion: %s (Kids: %s)
+            - Total days: %s (Starts on actual date: %s)
+            - Budget estimate target: %s VND
+            - Additional requirements: %s
 
             === REPLAN CONTEXT (CRITICAL) ===
             The user was NOT completely satisfied with the previous itinerary and provided this feedback:
@@ -244,19 +253,17 @@ public class Phase3Generation {
             %s
             These specific POI IDs were rejected by the user. You are STRICTLY FORBIDDEN from including them in the new JSON output.
 
+            CANDIDATE POIS TO CHOOSE FROM (CRITICAL INSTRUCTION - ALREADY FILTERED & SORTED):
+            These POIs have been mathematically sorted by our Vector AI. The items at the TOP are the best matching alternatives based on the user's profile.
+            Strongly prioritize top POIs unless you are replacing them with something that better addresses the user's Replan feedback:
+            %s
+
             YOUR REVISION TASK:
             1. Generate a COMPLETELY NEW valid JSON itinerary that incorporates the user's feedback.
             2. Analyze what needs to change from the previous itinerary and logically swap routing/activities.
             3. Do not suggest any rejected POI IDs. Choose alternative replacements from the Candidate POIs.
             4. Make sure your adjusted schedule still strictly complies with realistic opening hours, OSRM distances, and travel time concepts.
             ==================================
-
-            TRIP OVERVIEW:
-            - Style/Type: %s
-            - Companion: %s (Kids: %s)
-            - Total days: %s (Starts on actual date: %s)
-            - Budget estimate target: %s VND
-            - Additional requirements: %s
 
             1. LOGISTICS & TIME RULES:
             - The schedule must be realistic and spaced efficiently across %s days.
@@ -269,6 +276,10 @@ public class Phase3Generation {
             - Mention HOW you resolved the user's feedback right in the `reasoningSummary` (in VIETNAMESE or exact language of user's notes).
             - Write personalized and highly specific `aiTip` based on semantic_text for each selected activity.
 
+            === FINAL OUTPUT INSTRUCTION (STRICT JSON ONLY) ===
+            You MUST return ONLY a fully valid JSON object.
+            Do NOT include conversational text before or after the JSON.
+            Do NOT wrap the JSON in markdown blocks (e.g. no ``` or ```json).
             Output schema must exactly follow:
             {
               "tripTitle": "Catchy naming for this trip",
@@ -294,15 +305,7 @@ public class Phase3Generation {
               ]
             }
             Note: `id` in activities MUST be the exact integer `poi_id` from Candidate POIs.
-
-            CANDIDATE POIS TO CHOOSE FROM (CRITICAL INSTRUCTION - ALREADY FILTERED & SORTED):
-            These POIs have been mathematically sorted by our Vector AI. The items at the TOP are the best matching alternatives based on the user's profile.
-            Strongly prioritize top POIs unless you are replacing them with something that better addresses the user's Replan feedback:
-            %s
             """.formatted(
-                tripContext.get("feedback_notes"),
-                previousItineraryJson,
-                rejectedIdsJson,
                 tripContext.get("styles"),
                 tripContext.get("companion"),
                 tripContext.get("hasKids"),
@@ -310,18 +313,59 @@ public class Phase3Generation {
                 tripContext.get("start_date"),
                 tripContext.get("budget_total_vnd"),
                 tripContext.get("specialNotes"),
-                tripContext.get("numDays"),
-                candidatePoisJson
+                tripContext.get("feedback_notes"),
+                previousItineraryJson,
+                rejectedIdsJson,
+                candidatePoisJson,
+                tripContext.get("numDays")
         );
     }
 
     //--------------------------------------- Helper function-----------------------------------
     private String cleanJsonResponse(String raw) {
-        if (raw == null) return null;
-        int start = raw.indexOf('{');
-        int end = raw.lastIndexOf('}');
-        if (start != -1 && end != -1 && start < end) {
+        if (raw == null || raw.isBlank()) return null;
+
+        int start = -1;
+        int max = raw.length();
+        for (int i = 0; i < max; i++) {
+            if (raw.charAt(i) == '{') {
+                start = i;
+                break;
+            }
+        }
+        if (start == -1) return raw;
+
+        int counter = 0;
+        boolean inString = false;
+        boolean escape = false;
+        int end = -1;
+
+        for (int i = start; i < max; i++) {
+            char c = raw.charAt(i);
+            if (escape) {
+                escape = false;
+            } else if (c == '\\') {
+                escape = true;
+            } else if (c == '"') {
+                inString = !inString;
+            } else if (!inString) {
+                if (c == '{') counter++;
+                else if (c == '}') counter--;
+
+                if (counter == 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
+
+        if (end != -1) {
             return raw.substring(start, end + 1);
+        }
+
+        int lastEnd = raw.lastIndexOf('}');
+        if (start < lastEnd) {
+            return raw.substring(start, lastEnd + 1);
         }
         return raw;
     }

@@ -32,7 +32,7 @@ public class GeminiEmbeddingService {
 
             for (String text : texts) {
                 EmbedContentResponse response = client.models.embedContent(
-                        "gemini-embedding-2-preview",
+                        "gemini-embedding-2",
                         text,
                         config
                 );
