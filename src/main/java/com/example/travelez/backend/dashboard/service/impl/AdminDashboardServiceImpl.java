@@ -34,7 +34,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
         long lockedUsersCount = userRepository.countByStatus(UserStatus.BANNED);
 
-        long pendingReportsCount = reportRepository.countByStatus(ReportStatus.PENDING);
+        long pendingReportsCount = reportRepository.countDistinctPostsByStatus(ReportStatus.PENDING);
 
         long newPostsCount = postsRepository.count();
 

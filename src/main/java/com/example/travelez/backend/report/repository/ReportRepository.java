@@ -73,4 +73,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     Long countByPostIdAndStatus(Long postId, ReportStatus status);
 
     Long countByStatus(ReportStatus status);
+
+    @Query("SELECT COUNT(DISTINCT r.post.id) FROM Report r WHERE r.status = :status")
+    long countDistinctPostsByStatus(@Param("status") ReportStatus status);
 }
