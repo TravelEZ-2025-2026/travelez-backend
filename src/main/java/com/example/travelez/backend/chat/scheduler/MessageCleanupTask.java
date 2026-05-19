@@ -2,8 +2,6 @@ package com.example.travelez.backend.chat.scheduler;
 
 
 import com.example.travelez.backend.chat.repository.MessageRepository;
-import com.example.travelez.backend.dashboard.model.enums.ActivityCategory;
-import com.example.travelez.backend.dashboard.service.impl.AuditLogService;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.media.repository.MediaRepository;
 import com.example.travelez.backend.media.service.MediaService;
@@ -38,8 +36,6 @@ public class MessageCleanupTask {
 
     private final MediaRepository mediaRepository;
 
-    private final AuditLogService auditLogService;
-
     @Scheduled(cron = "* * 2 * * ?")
     public void cleanupRecalledMessagesMedia() {
         log.info("CRON JOB: Bắt đầu dọn dẹp file của tin nhắn đã thu hồi...");
@@ -72,14 +68,6 @@ public class MessageCleanupTask {
             log.info("CRON JOB: Đã xóa {} tin nhắn ở batch này.", batchMessageIds.size());
         }
         log.info("CRON JOB HOÀN TẤT: Đã xóa tổng cộng {} tin nhắn.", totalDeleted);
-
-        if (totalDeleted > 0) {
-            auditLogService.logActivity(
-                    ActivityCategory.SYSTEM,
-                    "System CRON Job auto-cleaned " + totalDeleted + " obsolete media files from recalled chat messages.",
-                    "System Action"
-            );
-        }
     }
 }
 
