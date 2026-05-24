@@ -17,6 +17,8 @@ public class PostsCreateRequest {
 
     private Long poiId;
 
+    private Long itineraryId;
+
     private String topicTag;
 
     @NotBlank(message = "Content must not be blank")

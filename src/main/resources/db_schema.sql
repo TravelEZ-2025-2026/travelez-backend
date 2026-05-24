@@ -182,6 +182,7 @@ CREATE TABLE posts (
     user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     title VARCHAR(255),
     poi_id BIGINT REFERENCES place_of_interest(id) ON DELETE SET NULL,
+    itinerary_id BIGINT REFERENCES itinerary(id) ON DELETE SET NULL,
     topic_tag VARCHAR(255),
     content TEXT,
     status post_status NOT NULL DEFAULT 'PUBLISHED',

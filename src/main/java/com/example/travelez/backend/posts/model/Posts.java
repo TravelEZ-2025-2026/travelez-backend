@@ -1,6 +1,7 @@
 package com.example.travelez.backend.posts.model;
 
 import com.example.travelez.backend.common.model.AuditableEntity;
+import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.posts.model.enums.PostStatus;
@@ -47,6 +48,10 @@ public class Posts extends AuditableEntity {
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "itinerary_id")
+    private Itinerary itinerary;
 
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @JoinTable(name = "media_posts",

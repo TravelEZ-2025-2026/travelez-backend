@@ -1,5 +1,6 @@
 package com.example.travelez.backend.posts.dto.response;
 
+import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
 import com.example.travelez.backend.media.dto.response.MediaBaseResponse;
 import com.example.travelez.backend.poi.dto.response.PoiSummaryResponse;
 import com.example.travelez.backend.posts.model.enums.PostStatus;
@@ -22,6 +23,7 @@ public class PostResponse {
     private String topicTag;
     private String content;
     private PoiSummaryResponse poiSummary;
+    private ItinerarySummaryResponse itinerarySummary;
     private PostStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
