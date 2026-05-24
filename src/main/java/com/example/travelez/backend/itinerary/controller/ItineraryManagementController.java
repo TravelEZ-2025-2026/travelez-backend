@@ -108,6 +108,20 @@ public class ItineraryManagementController {
         return BaseResponse.success(result, ResultCode.SUCCESS, "Retrieve shared users list successfully");
     }
 
+    @GetMapping("/public")
+    public ResponseEntity<BaseResponse<CommonPage<ItinerarySummaryResponse>>> getAllPublicItineraries(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(
+                page, size, Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        CommonPage<ItinerarySummaryResponse> result = itineraryManagementService.getAllPublicItineraries(pageable);
+
+        return BaseResponse.success(result, ResultCode.SUCCESS, "Retrieve all public itineraries successfully");
+    }
+
     @PostMapping("/{id}/export-calendar")
     public ResponseEntity<BaseResponse<Void>> exportToGoogleCalendar(@PathVariable Long id) {
         itineraryManagementService.exportToGoogleCalendar(id);

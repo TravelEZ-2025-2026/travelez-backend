@@ -228,6 +228,25 @@ public class ItineraryManagementServiceImpl implements ItineraryManagementServic
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CommonPage<ItinerarySummaryResponse> getAllPublicItineraries(Pageable pageable) {
+        Page<Itinerary> publicItineraryPage = itineraryRepository.findByIsPublicTrue(pageable);
+
+        List<ItinerarySummaryResponse> list = publicItineraryPage.getContent().stream()
+                .map(itineraryMapper::toSummaryResponse)
+                .toList();
+
+        return new CommonPage<>(
+                list,
+                publicItineraryPage.getTotalPages(),
+                publicItineraryPage.getTotalElements(),
+                pageable.getPageSize(),
+                publicItineraryPage.getNumber(),
+                publicItineraryPage.isEmpty()
+        );
+    }
+
     private UserPrinciple getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {

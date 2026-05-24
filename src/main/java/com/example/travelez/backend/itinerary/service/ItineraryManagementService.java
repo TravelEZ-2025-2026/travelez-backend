@@ -17,4 +17,5 @@ public interface ItineraryManagementService {
     CommonPage<ItinerarySummaryResponse> searchPublicItineraries(String prompt, Pageable pageable);
     CommonPage<ItinerarySummaryResponse> getUserPublicItineraries(Long userId, Pageable pageable);
     CommonPage<SharedUserSearchResponse> getSharedUsers(Long itineraryId, Pageable pageable);
+    CommonPage<ItinerarySummaryResponse> getAllPublicItineraries(Pageable pageable);
 }

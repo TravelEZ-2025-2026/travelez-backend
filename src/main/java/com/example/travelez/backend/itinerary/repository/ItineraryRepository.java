@@ -30,4 +30,6 @@ public interface ItineraryRepository extends JpaRepository<Itinerary, Long>, Jpa
 
     @Query("SELECT i FROM Itinerary i WHERE i.traveler.id = :userId AND i.isPublic = true")
     Page<Itinerary> findPublicItinerariesByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    Page<Itinerary> findByIsPublicTrue(Pageable pageable);
 }

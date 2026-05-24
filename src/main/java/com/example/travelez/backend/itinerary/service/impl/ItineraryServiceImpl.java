@@ -182,29 +182,25 @@ public class ItineraryServiceImpl implements ItineraryService {
     @Override
     @Transactional(readOnly = true)
     public ItineraryDetailResponse getItineraryDetail(Long itineraryId) {
-        UserPrinciple currentUser = getCurrentUser();
-
         Itinerary itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
 
+        if (Boolean.TRUE.equals(itinerary.getIsPublic())) {
+            return buildDetailResponse(itinerary);
+        }
+
+        UserPrinciple currentUser = getCurrentUser();
+
         boolean isOwner = Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId());
 
-        if (!Boolean.TRUE.equals(itinerary.getIsPublic()) && !isOwner) {
+        if (!isOwner) {
             boolean isSharedWithMe = itinerarySharedUserRepository.existsByItineraryIdAndUserId(itineraryId, currentUser.getUserId());
             if (!isSharedWithMe) {
                 throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to access this itinerary. It is not shared with you.");
             }
         }
-        // ================================
 
-        List<ItineraryActivity> dbActivities = itineraryActivityRepository
-                .findByItineraryIdOrderByItineraryDateAscStartTimeAsc(itineraryId);
-
-        ItineraryDetailResponse response = itineraryMapper.toDetailResponseHeader(itinerary);
-        List<DayPlan> dayPlans = groupActivitiesByDate(dbActivities);
-        response.setDays(dayPlans);
-
-        return response;
+        return buildDetailResponse(itinerary);
     }
 
     @Override
@@ -275,5 +271,14 @@ public class ItineraryServiceImpl implements ItineraryService {
             throw new ApiException(ResultCode.UNAUTHORIZED, "You need to log in to perform this action.");
         }
         return (UserPrinciple) authentication.getPrincipal();
+    }
+
+    private ItineraryDetailResponse buildDetailResponse(Itinerary itinerary) {
+        List<ItineraryActivity> dbActivities = itineraryActivityRepository
+                .findByItineraryIdOrderByItineraryDateAscStartTimeAsc(itinerary.getId());
+        ItineraryDetailResponse response = itineraryMapper.toDetailResponseHeader(itinerary);
+        List<DayPlan> dayPlans = groupActivitiesByDate(dbActivities);
+        response.setDays(dayPlans);
+        return response;
     }
 }
