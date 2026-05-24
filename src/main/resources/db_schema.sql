@@ -262,6 +262,8 @@ CREATE TABLE itinerary (
     estimated_food_and_drink_price NUMERIC(12, 2),
     estimated_accommodation_price NUMERIC(12, 2),
     estimated_currency VARCHAR(10),
+    is_public BOOLEAN DEFAULT FALSE,
+    objectives_vector vector(768),
 
     CONSTRAINT fk_itinerary_users FOREIGN KEY (traveler_id) REFERENCES users(id) ON DELETE CASCADE
 );

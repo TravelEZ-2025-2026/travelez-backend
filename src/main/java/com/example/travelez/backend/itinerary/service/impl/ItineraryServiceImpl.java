@@ -4,6 +4,7 @@ import com.example.travelez.backend.ai.pipeline.facade.AiItineraryFacade;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
+import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
@@ -36,6 +37,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.concurrent.CompletableFuture;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -54,6 +56,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final ItineraryCacheRepository itineraryCacheRepository;
     private final AiItineraryFacade aiPipelineFacade;
     private final ItinerarySharedUserRepository itinerarySharedUserRepository;
+    private final GeminiEmbeddingService geminiEmbeddingService;
 
     @Override
     public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request) {
@@ -130,7 +133,27 @@ public class ItineraryServiceImpl implements ItineraryService {
         }
 
         itineraryActivityRepository.saveAll(activities);
-        return savedItinerary.getId();
+
+        String objectives = savedItinerary.getObjectives();
+        final Long itineraryId = savedItinerary.getId();
+
+        if (objectives != null && !objectives.isBlank()) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    List<float[]> embeddings = geminiEmbeddingService.embedTexts(List.of(objectives));
+
+                    if (!embeddings.isEmpty() && embeddings.getFirst() != null) {
+                        String vectorStr = Arrays.toString(embeddings.getFirst());
+
+                        itineraryRepository.updateObjectivesVector(itineraryId, vectorStr);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to vectorize itinerary objectives for ID: {}", itineraryId, e);
+                }
+            });
+        }
+
+        return itineraryId;
     }
 
     @Override
@@ -166,7 +189,7 @@ public class ItineraryServiceImpl implements ItineraryService {
 
         boolean isOwner = Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId());
 
-        if (!isOwner) {
+        if (!Boolean.TRUE.equals(itinerary.getIsPublic()) && !isOwner) {
             boolean isSharedWithMe = itinerarySharedUserRepository.existsByItineraryIdAndUserId(itineraryId, currentUser.getUserId());
             if (!isSharedWithMe) {
                 throw new ApiException(ResultCode.FORBIDDEN, "You are not allowed to access this itinerary. It is not shared with you.");
