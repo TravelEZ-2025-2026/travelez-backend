@@ -8,6 +8,8 @@ import com.example.travelez.backend.common.exception.ApiException;
 import com.example.travelez.backend.common.exception.Asserts;
 import com.example.travelez.backend.common.utils.SecurityUtils;
 import com.example.travelez.backend.infrastructure.filestorage.dto.UploadFileResult;
+import com.example.travelez.backend.itinerary.model.Itinerary;
+import com.example.travelez.backend.itinerary.repository.ItineraryRepository;
 import com.example.travelez.backend.media.dto.enums.MediaTarget;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.media.repository.MediaRepository;
@@ -67,6 +69,7 @@ public class PostsServiceImpl implements PostsService {
     private final PostsRepository postsRepository;
     private final CommentRepository commentRepository;
     private final MediaRepository mediaRepository;
+    private final ItineraryRepository itineraryRepository;
 
     private final PostsMapper postsMapper;
 
@@ -84,7 +87,19 @@ public class PostsServiceImpl implements PostsService {
                         throw new ApiException(ResultCode.NOT_FOUND, "Poi not found");
                     }
                 }
-                Posts post = postsMapper.toPosts(request, SecurityUtils.getCurrentUserId(), request.getPoiId());
+                if (request.getItineraryId() != null) {
+                    Itinerary itinerary = itineraryRepository.findById(request.getItineraryId())
+                            .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
+
+                    if (!Objects.equals(itinerary.getTraveler().getId(), SecurityUtils.getCurrentUserId())) {
+                        throw new ApiException(ResultCode.FORBIDDEN, "You can only attach your own itinerary");
+                    }
+
+                    if (!Boolean.TRUE.equals(itinerary.getIsPublic())) {
+                        throw new ApiException(ResultCode.VALIDATION_FAILED, "You can only attach public itineraries. Please make this itinerary public first.");
+                    }
+                }
+                Posts post = postsMapper.toPosts(request, SecurityUtils.getCurrentUserId(), request.getPoiId(), request.getItineraryId());
                 post.setFolderId(UUID.fromString(folder_id));
                 Posts savedPost = postsRepository.save(post);
                 mediaService.attachMediasToEntity(uploadedFiles, MediaTarget.POST, savedPost.getId());

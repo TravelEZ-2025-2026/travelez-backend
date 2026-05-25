@@ -13,5 +13,9 @@ public interface ItineraryManagementService {
     CommonPage<ItinerarySummaryResponse> getSharedWithMeItineraries(Pageable pageable);
     void exportToGoogleCalendar(Long itineraryId);
     List<SharedUserSearchResponse> searchSharedUsers(Long itineraryId, String keyword);
-
+    void togglePublicStatus(Long itineraryId, boolean isPublic);
+    CommonPage<ItinerarySummaryResponse> searchPublicItineraries(String prompt, Pageable pageable);
+    CommonPage<ItinerarySummaryResponse> getUserPublicItineraries(Long userId, Pageable pageable);
+    CommonPage<SharedUserSearchResponse> getSharedUsers(Long itineraryId, Pageable pageable);
+    CommonPage<ItinerarySummaryResponse> getAllPublicItineraries(Pageable pageable);
 }

@@ -22,7 +22,7 @@ public class GeminiService {
     public enum ModelType {
         PRO("gemini-2.5-pro"),
         FLASH_LITE("gemini-3.1-flash-lite"),
-        FLASH("gemini-2.5-flash");
+        FLASH("gemini-3.5-flash");
 
         public final String modelName;
 

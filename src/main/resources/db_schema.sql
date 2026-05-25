@@ -182,6 +182,7 @@ CREATE TABLE posts (
     user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     title VARCHAR(255),
     poi_id BIGINT REFERENCES place_of_interest(id) ON DELETE SET NULL,
+    itinerary_id BIGINT REFERENCES itinerary(id) ON DELETE SET NULL,
     topic_tag VARCHAR(255),
     content TEXT,
     status post_status NOT NULL DEFAULT 'PUBLISHED',
@@ -262,6 +263,8 @@ CREATE TABLE itinerary (
     estimated_food_and_drink_price NUMERIC(12, 2),
     estimated_accommodation_price NUMERIC(12, 2),
     estimated_currency VARCHAR(10),
+    is_public BOOLEAN DEFAULT FALSE,
+    objectives_vector vector(768),
 
     CONSTRAINT fk_itinerary_users FOREIGN KEY (traveler_id) REFERENCES users(id) ON DELETE CASCADE
 );

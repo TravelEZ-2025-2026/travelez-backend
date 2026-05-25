@@ -3,6 +3,7 @@ package com.example.travelez.backend.itinerary.service.impl;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
+import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
 import com.example.travelez.backend.itinerary.dto.response.SharedUserSearchResponse;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
@@ -23,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,6 +36,7 @@ public class ItineraryManagementServiceImpl implements ItineraryManagementServic
     private final UserRepository userRepository;
     private final ItinerarySharedUserRepository sharedUserRepository;
     private final ItineraryMapper itineraryMapper;
+    private final GeminiEmbeddingService geminiEmbeddingService;
 
     @Override
     @Transactional
@@ -136,6 +139,112 @@ public class ItineraryManagementServiceImpl implements ItineraryManagementServic
     @Override
     public void exportToGoogleCalendar(Long itineraryId) {
         throw new ApiException(ResultCode.FORBIDDEN, "This feature is not available yet");
+    }
+
+    @Override
+    public void togglePublicStatus(Long itineraryId, boolean isPublic) {
+        UserPrinciple currentUser = getCurrentUser();
+        Itinerary itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
+
+        if (!Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId())) {
+            throw new ApiException(ResultCode.FORBIDDEN, "Only owner can make this itinerary public");
+        }
+
+        itinerary.setIsPublic(isPublic);
+        itineraryRepository.save(itinerary);
+    }
+
+    @Override
+    public CommonPage<ItinerarySummaryResponse> searchPublicItineraries(String prompt, Pageable pageable) {
+        List<float[]> embeddings = geminiEmbeddingService.embedTexts(List.of(prompt));
+
+        if (embeddings.isEmpty() || embeddings.getFirst() == null) {
+            throw new ApiException(ResultCode.AI_SERVICE_ERROR, "Cannot generate vector for prompt");
+        }
+
+        String vectorStr = Arrays.toString(embeddings.getFirst());
+
+        Page<Itinerary> itineraryPage = itineraryRepository.searchPublicItinerariesByVector(vectorStr, pageable);
+
+        List<ItinerarySummaryResponse> responses = itineraryPage.getContent().stream()
+                .map(itineraryMapper::toSummaryResponse)
+                .toList();
+
+        return new CommonPage<>(
+                responses,
+                itineraryPage.getTotalPages(),
+                itineraryPage.getTotalElements(),
+                pageable.getPageSize(),
+                itineraryPage.getNumber(),
+                itineraryPage.isEmpty()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommonPage<ItinerarySummaryResponse> getUserPublicItineraries(Long userId, Pageable pageable) {
+        Page<Itinerary> publicItineraryPage = itineraryRepository.findPublicItinerariesByUserId(userId, pageable);
+
+        List<ItinerarySummaryResponse> list = publicItineraryPage.getContent().stream()
+                .map(itineraryMapper::toSummaryResponse)
+                .toList();
+
+        return new CommonPage<>(
+                list,
+                publicItineraryPage.getTotalPages(),
+                publicItineraryPage.getTotalElements(),
+                pageable.getPageSize(),
+                publicItineraryPage.getNumber(),
+                publicItineraryPage.isEmpty()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommonPage<SharedUserSearchResponse> getSharedUsers(Long itineraryId, Pageable pageable) {
+        UserPrinciple currentUser = getCurrentUser();
+
+        Itinerary itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
+
+        if (!Objects.equals(itinerary.getTraveler().getId(), currentUser.getUserId())) {
+            throw new ApiException(ResultCode.FORBIDDEN, "Only owner can view shared users");
+        }
+
+        Page<ItinerarySharedUser> sharedUserPage = sharedUserRepository.findByItineraryIdWithPage(itineraryId, pageable);
+
+        List<SharedUserSearchResponse> responses = sharedUserPage.getContent().stream()
+                .map(itineraryMapper::toSharedUserSearchResponse)
+                .toList();
+
+        return new CommonPage<>(
+                responses,
+                sharedUserPage.getTotalPages(),
+                sharedUserPage.getTotalElements(),
+                pageable.getPageSize(),
+                sharedUserPage.getNumber(),
+                sharedUserPage.isEmpty()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CommonPage<ItinerarySummaryResponse> getAllPublicItineraries(Pageable pageable) {
+        Page<Itinerary> publicItineraryPage = itineraryRepository.findByIsPublicTrue(pageable);
+
+        List<ItinerarySummaryResponse> list = publicItineraryPage.getContent().stream()
+                .map(itineraryMapper::toSummaryResponse)
+                .toList();
+
+        return new CommonPage<>(
+                list,
+                publicItineraryPage.getTotalPages(),
+                publicItineraryPage.getTotalElements(),
+                pageable.getPageSize(),
+                publicItineraryPage.getNumber(),
+                publicItineraryPage.isEmpty()
+        );
     }
 
     private UserPrinciple getCurrentUser() {

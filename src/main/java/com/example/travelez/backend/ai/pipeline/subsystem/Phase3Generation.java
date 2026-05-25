@@ -76,7 +76,7 @@ public class Phase3Generation {
 
         log.debug("Sending prompt to Gemini...");
         try {
-            String rawJsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+            String rawJsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
             // THÊM BƯỚC KHỬ NHIỄU Ở ĐÂY:
             rawJsonResponse = cleanJsonResponse(rawJsonResponse);
 
@@ -119,8 +119,9 @@ public class Phase3Generation {
             2. CATEGORY DISCIPLINE & STRICT LOGISTICS
             - DIVERSITY: Max 1 POI per category per day (except attractions/meals), to prevent category fatigue. Overide this ONLY if the user explicitly requested a themed tour in `specialNotes`.
             - NOISY LABEL DEFENSE: If a POI's name contains "Cafe", "Coffee", "Dessert", or "Bistro", strictly treat it as a CAFE.
-            - MEALS & HARD LIMITS: Max 1 Cafe stop and 2 Restaurant stops per day. NEVER schedule consecutive F&B stops.
+            - MEALS & HARD LIMITS: You MUST strictly guarantee exactly 3 meals per day (Breakfast, Lunch, Dinner), regardless of `hasKids`. NEVER schedule consecutive F&B stops.
               * BREAKFAST: 07:00 - 10:00 | LUNCH: 11:30 - 14:00 | DINNER: 17:30 - 21:00
+            - INTEGRATED DINING RULE: If an activity at a large POI (e.g., theme park, eco-tourism site, resort) overlaps with Lunch or Dinner hours, DO NOT add a separate Restaurant POI. Instead, assume they will eat inside the area. In this case, you MUST use the `aiTip` of that POI to explicitly recommend what and where to eat inside that location.
             - MIDDAY SHIELD: Between 11:30 - 14:30, prioritize indoor activities or long lunches to avoid heat.
             - PRIME VISUAL SLOT: The pre-sunset slot (16:30 - 18:30) is SACRED for visual/outdoor POIs. Do NOT schedule a Restaurant or Cafe here.
             - Exactly %d days. Activities MUST be sequential with NO overlaps.
@@ -136,11 +137,12 @@ public class Phase3Generation {
             === FINAL OUTPUT INSTRUCTION (STRICT JSON ONLY) ===
             You MUST return ONLY a fully valid JSON object. 
             Do NOT include conversational text before or after the JSON.
-            Do NOT wrap the JSON in markdown blocks (e.g. no ``` or ```json).
+            Do NOT wrap the JSON in markdown blocks (e.g. no ``` or 
+```json).
             Output schema must exactly follow:
             {
               "tripTitle": "Catchy naming for this trip",
-              "reasoningSummary": "Short explanation why these places suit the user",
+              "reasoningSummary": "Explanation why these places suit the user",
               "estimatedBudget": {
                  "total": 0, "transportation": 0, "activity": 0, "foodAndDrink": 0, "accommodation": 0, "currency": "VND"
               },
@@ -213,7 +215,7 @@ public class Phase3Generation {
         String prompt = buildReplanPrompt(tripContext, poiListForPrompt);
 
         try {
-            String rawJsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+            String rawJsonResponse = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
             rawJsonResponse = cleanJsonResponse(rawJsonResponse);
 
             log.info("Phase 3 REPLAN generated JSON successfully.");
@@ -271,6 +273,7 @@ public class Phase3Generation {
             - Assign specific `id` of POIs from the Candidate list exactly.
             - Set reasonable `startTime` and `endTime` in "HH:mm" format (e.g. "08:00").
             - A restaurant POI should ideally span 1 to 1.5 hours. Activities usually span 1.5 to 3 hours.
+            - STRICT MEAL COVERAGE: You MUST ensure exactly 3 meals (Breakfast, Lunch, Dinner) are planned for every day. If a large attraction overlaps with a meal time, DO NOT add a separate restaurant; instead, use the `aiTip` of that attraction to recommend dining inside.
 
             2. USER EXPERIENCE & CONTENT:
             - Mention HOW you resolved the user's feedback right in the `reasoningSummary` (in VIETNAMESE or exact language of user's notes).
@@ -283,7 +286,7 @@ public class Phase3Generation {
             Output schema must exactly follow:
             {
               "tripTitle": "Catchy naming for this trip",
-              "reasoningSummary": "Short explanation why these places suit the user",
+              "reasoningSummary": "Explanation why these places suit the user",
               "estimatedBudget": {
                  "total": 0, "transportation": 0, "activity": 0, "foodAndDrink": 0, "accommodation": 0, "currency": "VND"
               },

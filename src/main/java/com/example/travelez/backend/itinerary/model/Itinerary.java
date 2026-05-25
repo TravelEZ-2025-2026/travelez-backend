@@ -80,6 +80,12 @@ public class Itinerary extends AuditableEntity {
     @Column(columnDefinition = "TEXT")
     private String objectives;
 
+    @Column(name = "objectives_vector", columnDefinition = "text")
+    private String objectivesVector;
+
+    @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isPublic = false;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private ItineraryStatus status;

@@ -79,7 +79,7 @@ public class Phase5Correction {
         // 4. Gọi LLM2
         try {
             log.info("Sending repair instructions to Gemini...");
-            String fixedJson = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
+            String fixedJson = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
             fixedJson = cleanJsonResponse(fixedJson);
 
             log.info("Phase 5 Correction JSON generated successfully.");
@@ -100,9 +100,9 @@ public class Phase5Correction {
             
             Your job is NOT to preserve every original stop. Your job is to produce the smallest necessary set of changes that makes the itinerary both mathematically valid and meaningfully better.
             
-            1. THE "KILL SWITCH", DENSITY & FOOD REDUCTION RULE
-            - DENSITY ENFORCEMENT: If `hasKids` is True (Current: %b), the day MUST NOT exceed 4 total activities (including meals). If the draft has more, YOU MUST DELETE the weakest/filler POIs until it reaches 4.
-            - FOOD/DRINK REDUCTION: Target MAXIMUM 1 Cafe and 2 Restaurants per day.
+            1. THE "KILL SWITCH", DENSITY & MEAL RULES
+            - DENSITY ENFORCEMENT: If `hasKids` is True (Current: %b), the day MUST NOT exceed 4 total activities (not including meals). If the draft has more, YOU MUST DELETE the weakest/filler POIs until it reaches 4.
+            - MEALS & INTEGRATED DINING: You MUST strictly guarantee exactly 3 meals per day (Breakfast, Lunch, Dinner). If a large attraction overlaps with Lunch or Dinner hours, DO NOT add a separate Restaurant POI. Instead, assume they will eat inside the area and use the `aiTip` of that attraction to recommend dining inside. Otherwise, target MAXIMUM 1 Cafe and 2 Restaurants per day.
             - PRIME SLOT PROTECTION: If a routine Restaurant or Cafe occupies the late afternoon/sunset slot (16:30-18:30) for a visual trip, REMOVE IT or shift it to dinner.
             
             2. LOGISTICS REPAIR MATH (CRITICAL)

@@ -18,7 +18,7 @@ import java.util.Optional;
 
 public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecificationExecutor<Posts> {
 
-    @EntityGraph(attributePaths = {"user"})
+    @EntityGraph(attributePaths = {"user", "poi", "itinerary"})
     Optional<Posts> findByIdAndUserId(Long postId, Long userId);
 
 //     @Query("SELECT p FROM Posts p WHERE (p.user.id = :id OR p.user.id in (SELECT f.following.id FROM Follow f WHERE f.follower.id = :id)) AND p.status = 'PUBLIC' ORDER BY p.id DESC ")
@@ -42,12 +42,13 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
 //             "ORDER BY p.id DESC ")
 //     Slice<Posts> findSuggestedPostsNextPage(@Param("id") Long userId, @Param("lastPostId") Long lastPostId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"user", "poi"})
+    @EntityGraph(attributePaths = {"user", "poi", "itinerary"})
     @Query("SELECT p FROM Posts p " +
             "WHERE p.status = 'PUBLISHED' " +
             "ORDER BY p.id DESC")
     Slice<Posts> findAllPostsFirstPage(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"user", "poi", "itinerary"})
     @Query("SELECT p FROM Posts p " +
             "WHERE p.status = 'PUBLISHED' " +
             "AND p.id < :lastPostId " +
@@ -62,7 +63,7 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
 
     boolean existsByIdAndStatus(Long postId, PostStatus status);
 
-    @EntityGraph(attributePaths = {"user", "poi", "poi.ward", "poi.place"})
+    @EntityGraph(attributePaths = {"user", "poi", "poi.ward", "poi.place", "itinerary"})
     Page<Posts> findAll(Specification<Posts> specification, Pageable pageable);
 
     // Admin 
@@ -92,7 +93,7 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
             "ORDER BY COUNT(p) DESC")
     List<TopTagProjection> getTopTags(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"user"})
+    @EntityGraph(attributePaths = {"user", "poi", "itinerary"})
     @Query("SELECT p FROM Posts p WHERE p.id = :postId")
     Optional<Posts> findByPostId(@Param("postId") Long postId);
 

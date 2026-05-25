@@ -1,116 +1,235 @@
 
-```markdown
-# Tài liệu Tích hợp API Module Quản lý Lịch trình (Itinerary Management - M2)
 
-Tài liệu này hướng dẫn cách sử dụng các API liên quan đến tính năng chia sẻ, quản lý quyền truy cập và các tiện ích mở rộng cho lịch trình.
+# 🚀 Tài liệu Tích hợp API - Itinerary Management (Public & Collaboration)
 
-## 1. Tổng quan luồng nghiệp vụ
-- **Quyền sở hữu:** Chỉ **Chủ sở hữu (Owner)** của lịch trình mới có quyền chia sẻ hoặc thu hồi quyền truy cập của người khác.
-- **Chia sẻ:** Việc chia sẻ được thực hiện thông qua `username` của người nhận.
-- **Truy cập:** Khi được chia sẻ, lịch trình sẽ xuất hiện trong danh sách "Được chia sẻ với tôi" của người nhận.
+Tài liệu này cung cấp đặc tả chi tiết cho các API quản lý Lộ trình (Itinerary), phục vụ 3 nhóm tính năng chính: **Khám phá cộng đồng (Explore), Hồ sơ cá nhân (Profile), và Cộng tác nhóm (Collaboration)**.
 
 ---
 
-## 2. Đối tượng dữ liệu (Data Models)
+## 🌟 PHẦN 1: TÍNH NĂNG KHÁM PHÁ & CỘNG ĐỒNG (EXPLORE)
+Sử dụng cho màn hình trang chủ hoặc tab "Khám phá", nơi hiển thị các lộ trình được mọi người chia sẻ công khai.
 
-### ItinerarySummaryResponse
-Dữ liệu tóm tắt dùng để hiển thị danh sách lịch trình (giống module M1).
+### 1.1. Lấy toàn bộ Lộ trình Public (Feed Mặc định)
+API này dùng để lấy danh sách tất cả các lộ trình đã được bật Public trên toàn hệ thống. Tự động sắp xếp mới nhất lên đầu.
+
+- **Endpoint:** `GET /api/management/itineraries/public`
+- **Query Parameters:**
+  - `page` (int, default: 0): Trang hiện tại.
+  - `size` (int, default: 10): Số lượng item mỗi trang.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Retrieve all public itineraries successfully",
+  "data": {
+    "content": [
+      {
+        "id": 101,
+        "title": "Khám phá Tây Bắc mùa lúa chín",
+        "destinationCities": ["sa_pa", "mu_cang_chai"],
+        "styles": ["Nature", "Photography"],
+        "startDate": "2026-09-10",
+        "endDate": "2026-09-15",
+        "status": "COMPLETED",
+        "createdAt": "2026-05-20T08:00:00",
+        "ownerUsername": "hieuvm"
+      }
+    ],
+    "totalPages": 5,
+    "totalElements": 50,
+    "pageSize": 10,
+    "pageNumber": 0,
+    "empty": false
+  }
+}
+
+```
+
+> 💡 **FE Tip:** Dùng API này khi user vừa vào tab Khám phá mà chưa gõ từ khóa nào. Các trường `styles` và `destinationCities` rất thích hợp để làm các thẻ tag (chip) nhỏ trên Card.
+
+### 1.2. Tìm kiếm Lộ trình bằng Trí tuệ Nhân tạo (AI Semantic Search)
+
+Tìm kiếm thông minh thông qua prompt tự nhiên của user (Vector Search).
+
+* **Endpoint:** `GET /api/management/itineraries/public/search`
+* **Query Parameters:**
+* `prompt` (String, required): Ví dụ: *"Tìm chuyến đi biển 3 ngày cho gia đình có trẻ nhỏ"*.
+* `page`, `size` (Phân trang).
+
+
+
+**Response:** Giống hệt cấu trúc `1.1` (Trả về `CommonPage<ItinerarySummaryResponse>`).
+
+---
+
+## 👤 PHẦN 2: TÍNH NĂNG HỒ SƠ CÁ NHÂN (PROFILE)
+
+Sử dụng khi xem trang cá nhân của một người dùng bất kỳ.
+
+### 2.1. Lấy danh sách Lộ trình Public của một User
+
+Render tab "Lộ trình" trên trang cá nhân của user.
+
+* **Endpoint:** `GET /api/management/itineraries/users/{userId}/public`
+* **Path Variables:**
+* `userId` (Long): ID của user đang xem profile.
+
+
+* **Query Parameters:** `page`, `size`.
+
+**Response:** Giống cấu trúc `1.1` (Trả về `CommonPage<ItinerarySummaryResponse>`).
+
+### 2.2. Bật / Tắt trạng thái Public của Lộ trình
+
+Chỉ chủ sở hữu lộ trình mới có quyền gọi API này. Thường dùng cho nút Toggle Switch trong phần cài đặt chuyến đi.
+
+* **Endpoint:** `PATCH /api/management/itineraries/{id}/public`
+* **Path Variables:** `id` (Long - ID lộ trình)
+* **Query Parameters:** - `isPublic` (boolean): `true` (Bật công khai) hoặc `false` (Chuyển về riêng tư).
+
+**Response (200 OK):**
 
 ```json
 {
-  "id": 10,
-  "title": "Chuyến du lịch Đà Lạt",
-  "destinationCities": ["da_lat"],
-  "styles": ["Relaxing"],
-  "startDate": "2025-12-01",
-  "endDate": "2025-12-05",
-  "status": "PLANNED",
-  "createdAt": "2024-04-20T08:30:00",
-  "ownerUsername": "nguyenvana"
+  "success": true,
+  "code": 200,
+  "message": "Itinerary is now public", // hoặc "Itinerary is now private"
+  "data": null
 }
+
 ```
 
 ---
 
-## 3. Danh sách Endpoint Chi tiết
+## 🤝 PHẦN 3: TÍNH NĂNG CỘNG TÁC (COLLABORATION / SHARE)
 
-### 3.1. Chia sẻ lịch trình với người dùng khác
-- **Endpoint:** `/api/management/itineraries/{id}/share`
-- **Method:** `POST`
-- **Mô tả:** Cấp quyền xem chi tiết lịch trình cho một người dùng khác thông qua tên đăng nhập (`username`).
+Dùng cho màn hình "Quản lý thành viên" bên trong chi tiết chuyến đi.
 
-**Tham số:**
-- `id` (Path Variable): ID của lịch trình muốn chia sẻ.
-- `username` (Query Param): Tên đăng nhập của người nhận.
+### 3.1. Chia sẻ Lộ trình cho User khác
 
-**Ví dụ gọi:** `POST /api/management/itineraries/42/share?username=hieuvm`
+Chủ phòng mời thêm bạn bè vào chuyến đi thông qua username.
 
-**Ràng buộc:**
-- Không thể tự chia sẻ cho chính mình.
-- Người nhận phải tồn tại trong hệ thống.
-- Chỉ chủ sở hữu lịch trình mới được thực hiện.
+* **Endpoint:** `POST /api/management/itineraries/{id}/share`
+* **Path Variables:** `id` (Long)
+* **Query Parameters:** - `username` (String): Tên đăng nhập của người muốn mời.
 
----
+**Bắt lỗi (Error Handling):**
 
-### 3.2. Thu hồi quyền chia sẻ
-- **Endpoint:** `/api/management/itineraries/{id}/share/{username}`
-- **Method:** `DELETE`
-- **Mô tả:** Huỷ bỏ quyền truy cập vào lịch trình của một người dùng đã được chia sẻ trước đó.
+* `404 Not Found`: Không tìm thấy user này trong hệ thống.
+* `400 Bad Request` (Validation Failed): Không thể tự share cho chính mình, hoặc user này đã được share từ trước.
 
-**Tham số:**
-- `id` (Path Variable): ID của lịch trình.
-- `username` (Path Variable): Tên đăng nhập của người muốn thu hồi quyền.
+### 3.2. Thu hồi quyền truy cập (Kick User)
 
-**Ví dụ gọi:** `DELETE /api/management/itineraries/42/share/hieuvm`
+Chủ phòng xóa một thành viên khỏi chuyến đi.
 
----
+* **Endpoint:** `DELETE /api/management/itineraries/{id}/share/{username}`
+* **Path Variables:** `id` (ID lộ trình), `username` (Người bị xóa).
 
-### 3.3. Danh sách lịch trình được chia sẻ với tôi
-- **Endpoint:** `/api/management/itineraries/shared-with-me`
-- **Method:** `GET`
-- **Mô tả:** Lấy danh sách phân trang các lịch trình mà người dùng khác đã chia sẻ cho bạn.
+### 3.3. Lấy danh sách thành viên trong Lộ trình (Có phân trang)
 
-**💡 Lưu ý đặc biệt cho Frontend:**
-- **Nhận diện người gửi:** Trong các field trả về, hãy lưu ý sử dụng field `ownerUsername`. Đây là dấu hiệu để hiển thị cho user biết ai là người đã tạo và share lịch trình này (Ví dụ UI: *"Được chia sẻ bởi hieuvm"*).
-- **Xem chi tiết lịch trình:** Để xem chi tiết các hoạt động trong chuyến đi này, Frontend **không cần gọi API mới**. Hãy lấy `id` của lịch trình trong danh sách này và tái sử dụng lại API **Xem chi tiết (Get Detail)** của Module 1 (`GET /api/itineraries/{id}`). Hệ thống phân quyền của Backend đã tự động mở khoá API này cho những tài khoản nằm trong danh sách được share.
+Render danh sách những người đã được share. Danh sách tự động xếp theo thời gian được mời mới nhất.
 
-**Query Params:**
-- `page` (Integer): Số thứ tự trang (Mặc định: 0).
-- `size` (Integer): Số phần tử trên mỗi trang (Mặc định: 10).
+* **Endpoint:** `GET /api/management/itineraries/{id}/shared-users`
+* **Query Parameters:** `page`, `size`.
 
-**Response Data (`CommonPage<ItinerarySummaryResponse>`):**
+**Response (200 OK):**
+
 ```json
 {
-  "content": [
+  "success": true,
+  "code": 200,
+  "message": "Retrieve shared users list successfully",
+  "data": {
+    "content": [
+      {
+        "userId": 42,
+        "username": "minhhieu",
+        "avatarUrl": "[https://link-to-avatar.jpg](https://link-to-avatar.jpg)",
+        "sharedAt": "2026-05-20T14:30:00"
+      }
+    ],
+    "totalPages": 1,
+    "totalElements": 1,
+    "pageSize": 10,
+    "pageNumber": 0,
+    "empty": false
+  }
+}
+
+```
+
+### 3.4. Tìm kiếm nhanh thành viên đang trong Lộ trình
+
+Dùng cho ô **Input Search** để chủ phòng lọc nhanh thành viên muốn kick/tìm kiếm (Không phân trang, trả thẳng mảng để FE tự render dropdown).
+
+* **Endpoint:** `GET /api/management/itineraries/{id}/shared-users/search`
+* **Query Parameters:** - `keyword` (String): Gõ tên/chữ cái đầu (vd: "hieu").
+
+**Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Search shared users successfully",
+  "data": [
     {
-      "id": 105,
-      "title": "Hành trình xuyên Việt",
-      "ownerUsername": "tranvanb",
-      // ... các field tóm tắt khác
+      "userId": 42,
+      "username": "minhhieu",
+      "avatarUrl": "[https://link-to-avatar.jpg](https://link-to-avatar.jpg)",
+      "sharedAt": "2026-05-20T14:30:00"
     }
-  ],
-  "totalElements": 1,
-  "totalPages": 1
+  ]
 }
+
 ```
 
+> 💡 **FE Tip:** Hãy dùng kỹ thuật `Debounce` (chờ ~300ms sau khi user ngừng gõ phím) rồi mới gọi API này để tránh spam Request lên server.
+
+### 3.5. Lấy danh sách các Lộ trình "Được chia sẻ với tôi"
+
+Dành cho người dùng xem những chuyến đi mà họ được người khác mời vào.
+
+* **Endpoint:** `GET /api/management/itineraries/shared-with-me`
+* **Query Parameters:** `page`, `size`.
+
+**Response:** Giống cấu trúc `1.1` (Trả về `CommonPage<ItinerarySummaryResponse>`).
+
 ---
 
-### 3.4. Xuất lịch trình sang Google Calendar (Sắp ra mắt)
-- **Endpoint:** `/api/management/itineraries/{id}/export-calendar`
-- **Method:** `POST`
-- **Mô tả:** Đồng bộ các hoạt động trong lịch trình vào lịch cá nhân của Google Calendar.
+## 🔐 Phân quyền & Quyền truy cập (Authorization Rules)
 
-**Lưu ý:** Hiện tại API này đang trả về lỗi `403 FORBIDDEN` do tính năng đang trong quá trình phát triển. Frontend có thể thiết kế sẵn nút bấm nhưng tạm thời chưa cần gọi API này.
+Để FE dễ dàng thiết kế luồng trải nghiệm cho Khách vãng lai (Guest) và Người dùng đã đăng nhập (Logged-in User), hệ thống API được phân rạch ròi thành 3 nhóm quyền hạn.
 
----
+Đặc biệt lưu ý API **Xem chi tiết Lộ trình (`GET /api/itineraries/{id}`)**, API này hoạt động linh hoạt dựa trên trạng thái của dữ liệu.
 
-## 4. Bảng mã lỗi đặc thù
+### 🟢 Nhóm 1: Không yêu cầu Token (Public Access)
+Người dùng chưa đăng nhập (Guest) vẫn có thể gọi được các API này. Frontend **không cần** truyền header `Authorization`.
+* `GET /api/management/itineraries/public` (Lấy toàn bộ lộ trình public)
+* `GET /api/management/itineraries/public/search` (Tìm kiếm bằng Prompt)
+* `GET /api/management/itineraries/users/{userId}/public` (Lấy lộ trình public của 1 user)
+* `GET /api/itineraries/{id}` (Xem chi tiết Lộ trình): **CHỈ áp dụng khi lộ trình này đang có `isPublic = true`**. Nếu gọi API này vào 1 lộ trình Private mà không có Token, hệ thống sẽ báo lỗi `401 UNAUTHORIZED`.
 
-| HTTP Code | Message | Giải thích |
-| :--- | :--- | :--- |
-| 403 | Only owner can share itinerary | Bạn không phải chủ sở hữu nên không có quyền chia sẻ. |
-| 404 | Target user not found | Username người nhận không tồn tại. |
-| 422 | You cannot share itinerary with yourself | Lỗi khi tự điền username của mình để chia sẻ. |
-| 422 | This itinerary has already been shared... | Lịch trình này đã được chia sẻ cho người này trước đó rồi. |
+### 🟡 Nhóm 2: Bắt buộc Đăng nhập (Yêu cầu Token)
+Bắt buộc truyền header `Authorization: Bearer {token}`. Nếu không có token hoặc token hết hạn, Backend trả về `401 UNAUTHORIZED`.
+* `GET /api/management/itineraries/shared-with-me` (Lấy danh sách lộ trình được chia sẻ với tôi).
+* `GET /api/itineraries/{id}` (Xem chi tiết Lộ trình): Áp dụng khi Lộ trình là **PRIVATE**. Lúc này hệ thống sẽ kiểm tra xem user có nằm trong danh sách được Share không. Nếu không, trả về `403 FORBIDDEN`.
+
+### 🔴 Nhóm 3: Bắt buộc Đăng nhập + Chủ sở hữu (Owner Only)
+Bắt buộc truyền Token. Backend sẽ kiểm tra chéo xem `userId` của token có phải là `traveler_id` (chủ lộ trình) hay không. Nếu không, trả về `403 FORBIDDEN` (Only owner can...).
+* `PATCH /api/management/itineraries/{id}/public` (Bật/tắt public)
+* `POST /api/management/itineraries/{id}/share` (Mời người vào chuyến đi)
+* `DELETE /api/management/itineraries/{id}/share/{username}` (Kick người khỏi chuyến đi)
+* `GET /api/management/itineraries/{id}/shared-users` (Lấy danh sách người được share)
+* `GET /api/management/itineraries/{id}/shared-users/search` (Tìm kiếm người được share)
+
+> 💡 **FE Tip xử lý UX/UI:**
+> - **Gặp lỗi 401:** Mở Modal/Trang yêu cầu Đăng nhập.
+> - **Gặp lỗi 403 (khi xem chi tiết Lộ trình):** Hiển thị màn hình rỗng kèm câu thông báo: *"Rất tiếc, lộ trình này đã được tác giả chuyển về chế độ riêng tư."*
+> - **Gặp lỗi 403 (khi thao tác Share/Public):** Hiển thị Toast thông báo lỗi màu đỏ: *"Bạn không có quyền thực hiện thao tác này."*
+
+```
+
 ```

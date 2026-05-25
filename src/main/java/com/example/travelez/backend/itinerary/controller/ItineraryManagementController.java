@@ -60,6 +60,68 @@ public class ItineraryManagementController {
         return BaseResponse.success(result, ResultCode.SUCCESS, "Search shared users successfully");
     }
 
+    @GetMapping("/public/search")
+    public ResponseEntity<BaseResponse<CommonPage<ItinerarySummaryResponse>>> searchItineraries(
+            @RequestParam String prompt,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        CommonPage<ItinerarySummaryResponse> result = itineraryManagementService.searchPublicItineraries(prompt, pageable);
+
+        return BaseResponse.success(result, ResultCode.SUCCESS, "Search success");
+    }
+
+    @PatchMapping("/{id}/public")
+    public ResponseEntity<BaseResponse<Void>> togglePublicStatus(
+            @PathVariable Long id,
+            @RequestParam boolean isPublic) {
+        itineraryManagementService.togglePublicStatus(id, isPublic);
+        String message = isPublic ? "Itinerary is now public" : "Itinerary is now private";
+        return BaseResponse.success(null, ResultCode.SUCCESS, message);
+    }
+
+    @GetMapping("/users/{userId}/public")
+    public ResponseEntity<BaseResponse<CommonPage<ItinerarySummaryResponse>>> getUserPublicItineraries(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        CommonPage<ItinerarySummaryResponse> result = itineraryManagementService.getUserPublicItineraries(userId, pageable);
+
+        return BaseResponse.success(result, ResultCode.SUCCESS, "Retrieve the list of successfully published itineraries.");
+    }
+
+    @GetMapping("/{id}/shared-users")
+    public ResponseEntity<BaseResponse<CommonPage<SharedUserSearchResponse>>> getSharedUsers(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(
+                page, size, Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        CommonPage<SharedUserSearchResponse> result = itineraryManagementService.getSharedUsers(id, pageable);
+        return BaseResponse.success(result, ResultCode.SUCCESS, "Retrieve shared users list successfully");
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<BaseResponse<CommonPage<ItinerarySummaryResponse>>> getAllPublicItineraries(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(
+                page, size, Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        CommonPage<ItinerarySummaryResponse> result = itineraryManagementService.getAllPublicItineraries(pageable);
+
+        return BaseResponse.success(result, ResultCode.SUCCESS, "Retrieve all public itineraries successfully");
+    }
+
     @PostMapping("/{id}/export-calendar")
     public ResponseEntity<BaseResponse<Void>> exportToGoogleCalendar(@PathVariable Long id) {
         itineraryManagementService.exportToGoogleCalendar(id);
