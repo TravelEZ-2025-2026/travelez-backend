@@ -22,4 +22,5 @@ public class ItinerarySummaryResponse {
     private ItineraryStatus status;
     private LocalDateTime createdAt;
     private String ownerUsername;
+    private Boolean isPublic;
 }

@@ -53,6 +53,9 @@ public interface ItineraryMapper {
     @Mapping(target = "timeOfDay", expression = "java(ItineraryUtils.calculateTimeOfDay(ItineraryUtils.parseTime(dto.getStartTime())))")
     ItineraryActivity createActivityEntity(ActivityDTO dto, Itinerary itinerary, java.time.LocalDate date, Poi linkedPoi);
 
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "userId", source = "traveler.id")
+    @Mapping(target = "isPublic", source = "isPublic")
     @Mapping(source = "title", target = "tripTitle")
     @Mapping(source = "objectives", target = "reasoningSummary")
     @Mapping(source = "userNotes", target = "specialNotes")
