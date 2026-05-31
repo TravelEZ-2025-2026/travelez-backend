@@ -34,7 +34,8 @@ API này dùng để lấy danh sách tất cả các lộ trình đã được 
         "endDate": "2026-09-15",
         "status": "COMPLETED",
         "createdAt": "2026-05-20T08:00:00",
-        "ownerUsername": "hieuvm"
+        "ownerUsername": "hieuvm",
+        "isPublic": true
       }
     ],
     "totalPages": 5,
@@ -44,6 +45,7 @@ API này dùng để lấy danh sách tất cả các lộ trình đã được 
     "empty": false
   }
 }
+
 
 ```
 

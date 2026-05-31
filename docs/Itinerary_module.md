@@ -178,7 +178,8 @@ Tất cả các API trả về HTTP Status Code 200 kèm theo cấu trúc JSON s
       "endDate": "2025-11-14",
       "status": "DRAFT",
       "createdAt": "2024-04-24T10:00:00",
-      "ownerUsername": "hieuvm"
+      "ownerUsername": "hieuvm",
+      "isPublic": false
     }
   ],
   "totalPages": 1,
@@ -200,14 +201,16 @@ Tất cả các API trả về HTTP Status Code 200 kèm theo cấu trúc JSON s
 ```json
 {
   "id": 42,
+  "userId": 1,
+  "isPublic": true,
   "tripTitle": "Chuyến đi Sài Gòn",
-  // ... (Gồm toàn bộ dữ liệu ngày/giờ, activities, budget như ItineraryResponse)
   "hasKids": true,
   "hasPets": false,
   "companion": "Family Expedition",
   "styles": ["Food Tourism"],
   "specialNotes": "Gia đình không đi bộ nhiều được"
 }
+
 ```
 
 ---

@@ -6,6 +6,10 @@ import java.util.List;
 
 @Data
 public class ItineraryDetailResponse extends ItineraryResponse {
+    private Long id;
+    private Long userId;
+    private Boolean isPublic;
+
     private Boolean hasKids;
     private Boolean hasPets;
     private String companion;
