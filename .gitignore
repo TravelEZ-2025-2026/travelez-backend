@@ -41,3 +41,10 @@ docs/plans/
 docs/AI_QUICK_START.md
 docs/DEVELOPMENT_GUIDE.md
 docs/WORKING_GUIDELINES.md
+.ai-sdlc/
+.gitmodules
+CLAUDE.md
+run-tests.sh
+run-tests.ps1
+test-core.js
+test.js
