@@ -27,6 +27,7 @@ import com.example.travelez.backend.review.model.enums.ReviewStatus;
 import com.example.travelez.backend.review.repository.ReviewRepository;
 import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.repository.UserRepository;
+import com.example.travelez.backend.moderation.repository.specification.ModerationAlertSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,8 +88,14 @@ public class ModerationAlertServiceImpl implements ModerationAlertService {
 
     @Override
     public CommonPage<ModerationAlertResponse> searchAlerts(ModerationAlertSearchRequest request, Pageable pageable) {
-        Specification<ModerationAlert> spec = buildSpecification(request);
-        Page<ModerationAlert> page = alertRepository.findAll(spec, pageable);
+        List<Specification<ModerationAlert>> specs = new ArrayList<>();
+        specs.add(ModerationAlertSpecification.filterByStatus(request.getStatus()));
+        specs.add(ModerationAlertSpecification.filterByViolationType(request.getViolationType()));
+        specs.add(ModerationAlertSpecification.filterByTargetType(request.getTargetType()));
+        specs.add(ModerationAlertSpecification.filterByCreatedAfter(request.getFromDate()));
+        specs.add(ModerationAlertSpecification.filterByCreatedBefore(request.getToDate()));
+
+        Page<ModerationAlert> page = alertRepository.findAll(Specification.allOf(specs), pageable);
         
         List<ModerationAlertResponse> responses = page.getContent().stream()
                 .map(alert -> {
@@ -260,31 +268,4 @@ public class ModerationAlertServiceImpl implements ModerationAlertService {
         }
     }
 
-    private Specification<ModerationAlert> buildSpecification(ModerationAlertSearchRequest request) {
-        return (root, query, cb) -> {
-            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-            
-            if (request.getStatus() != null) {
-                predicates.add(cb.equal(root.get("status"), request.getStatus()));
-            }
-            
-            if (request.getViolationType() != null) {
-                predicates.add(cb.equal(root.get("violationType"), request.getViolationType()));
-            }
-            
-            if (request.getTargetType() != null) {
-                predicates.add(cb.equal(root.get("targetType"), request.getTargetType()));
-            }
-            
-            if (request.getFromDate() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), request.getFromDate()));
-            }
-            
-            if (request.getToDate() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), request.getToDate()));
-            }
-            
-            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
-        };
-    }
 }

@@ -12,6 +12,7 @@ import com.example.travelez.backend.moderation.mapper.BannedKeywordMapper;
 import com.example.travelez.backend.moderation.model.BannedKeyword;
 import com.example.travelez.backend.moderation.repository.BannedKeywordRepository;
 import com.example.travelez.backend.moderation.service.BannedKeywordService;
+import com.example.travelez.backend.moderation.repository.specification.BannedKeywordSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -80,8 +82,13 @@ public class BannedKeywordServiceImpl implements BannedKeywordService {
 
     @Override
     public CommonPage<BannedKeywordResponse> searchKeywords(BannedKeywordSearchRequest request, Pageable pageable) {
-        Specification<BannedKeyword> spec = buildSpecification(request);
-        Page<BannedKeyword> page = repository.findAll(spec, pageable);
+        List<Specification<BannedKeyword>> specs = new ArrayList<>();
+        specs.add(BannedKeywordSpecification.filterByViolationType(request.getViolationType()));
+        specs.add(BannedKeywordSpecification.filterBySeverity(request.getSeverity()));
+        specs.add(BannedKeywordSpecification.filterByIsActive(request.getIsActive()));
+        specs.add(BannedKeywordSpecification.filterByKeyword(request.getKeyword()));
+
+        Page<BannedKeyword> page = repository.findAll(Specification.allOf(specs), pageable);
         List<BannedKeywordResponse> responses = page.getContent().stream()
                 .map(mapper::toResponse)
                 .toList();
@@ -108,28 +115,4 @@ public class BannedKeywordServiceImpl implements BannedKeywordService {
         log.info("Cache refreshed manually");
     }
 
-    private Specification<BannedKeyword> buildSpecification(BannedKeywordSearchRequest request) {
-        return (root, query, cb) -> {
-            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
-            
-            if (request.getViolationType() != null) {
-                predicates.add(cb.equal(root.get("violationType"), request.getViolationType()));
-            }
-            
-            if (request.getSeverity() != null) {
-                predicates.add(cb.equal(root.get("severity"), request.getSeverity()));
-            }
-            
-            if (request.getIsActive() != null) {
-                predicates.add(cb.equal(root.get("isActive"), request.getIsActive()));
-            }
-            
-            if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("keyword")), 
-                        "%" + request.getKeyword().toLowerCase() + "%"));
-            }
-            
-            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
-        };
-    }
 }
