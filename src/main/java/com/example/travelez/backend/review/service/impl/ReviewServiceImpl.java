@@ -50,6 +50,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final FileStorageService fileStorageService;
     private final MediaService mediaService;
     private final MediaRepository mediaRepository;
+    private final com.example.travelez.backend.moderation.service.ContentModerationService contentModerationService;
 
     @Override
     public CommonPage<ReviewBaseResponse> getReviewByPoiId(ReviewFilterRequest reviewFilterRequest,
@@ -81,6 +82,12 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ReviewBaseResponse createReview(Long poiId, ReviewCreateRequest request, List<MultipartFile> files) {
+        // Check for banned keywords before processing
+        var moderationResult = contentModerationService.checkKeywords(null, request.getContent());
+        if (!moderationResult.isSafe()) {
+            throw new ApiException(ResultCode.BAD_REQUEST, moderationResult.getReason());
+        }
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
         poiService.findByIdAndSystemStatus(poiId, PoiStatus.ACTIVE)
@@ -113,6 +120,13 @@ public class ReviewServiceImpl implements ReviewService {
             }
 
             ReviewBaseResponse result = reviewMapper.toReviewBaseResponse(reviewRepository.save(review));
+            
+            // Submit for AI moderation asynchronously
+            contentModerationService.submitForAIModeration(
+                    result.getId(),
+                    com.example.travelez.backend.moderation.model.enums.ModerationTargetType.REVIEW
+            );
+            
             return result;
         } catch (Exception e) {
             mediaService.cleanupFilesAsync(uploadedFiles.stream().map(UploadFileResult::getCloudName).toList());

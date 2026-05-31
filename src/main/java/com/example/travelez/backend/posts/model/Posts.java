@@ -4,6 +4,7 @@ import com.example.travelez.backend.common.model.AuditableEntity;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.poi.model.Poi;
+import com.example.travelez.backend.posts.model.enums.AiScanStatus;
 import com.example.travelez.backend.posts.model.enums.PostStatus;
 import com.example.travelez.backend.users.model.User;
 import jakarta.persistence.*;
@@ -41,6 +42,11 @@ public class Posts extends AuditableEntity {
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private PostStatus status;
+
+    @Column(name = "ai_scan_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private AiScanStatus aiScanStatus = AiScanStatus.PENDING_SCAN;
 
     @Column(name = "folder_id", nullable = true)
     private UUID folderId;

@@ -237,10 +237,46 @@ public interface PostsRepository extends JpaRepository<Posts, Long>, JpaSpecific
 
 **Quy tắc:**
 - Extend `JpaRepository<Entity, ID>`
-- Thêm `JpaSpecificationExecutor<Entity>` nếu cần dynamic query
+- Thêm `JpaSpecificationExecutor<Entity>` nếu cần dynamic query (search/filter với nhiều điều kiện tùy chọn)
 - Dùng `@EntityGraph` để tránh N+1 query
 - Dùng `@Query` cho custom query
 - Dùng `@Modifying` cho UPDATE/DELETE query
+
+**Specification — Tách ra class riêng trong `repository/specification/`:**
+
+> ❌ **SAI** — Viết Specification inline trong Service:
+> ```java
+> // PostsServiceImpl.java ← KHÔNG làm thế này
+> Specification<Posts> spec = (root, query, cb) -> {
+>     var predicates = new ArrayList<Predicate>();
+>     if (request.getStatus() != null) {
+>         predicates.add(cb.equal(root.get("status"), request.getStatus()));
+>     }
+>     return cb.and(predicates.toArray(new Predicate[0]));
+> };
+> ```
+
+> ✅ **ĐÚNG** — Tạo class `[Entity]Specification` riêng trong `repository/specification/`:
+> ```java
+> // repository/specification/PostsSpecification.java
+> public class PostsSpecification {
+>     public static Specification<Posts> filterByStatus(PostStatus status) {
+>         return (root, query, cb) ->
+>             status == null ? null : cb.equal(root.get("status"), status);
+>     }
+>     public static Specification<Posts> filterByUserId(Long userId) {
+>         return (root, query, cb) ->
+>             userId == null ? null : cb.equal(root.get("user").get("id"), userId);
+>     }
+> }
+> 
+> // PostsServiceImpl.java ← Chỉ gọi các hàm filterBy, kết hợp bằng Specification.allOf
+> List<Specification<Posts>> specs = new ArrayList<>();
+> specs.add(PostsSpecification.filterByStatus(request.getStatus()));
+> specs.add(PostsSpecification.filterByUserId(request.getUserId()));
+> 
+> Page<Posts> page = repository.findAll(Specification.allOf(specs), pageable);
+> ```
 
 #### Mapper (MapStruct)
 ```java
@@ -476,10 +512,57 @@ public class ExampleResponse {
 
 #### 3. Repository
 ```java
+// Không có dynamic filter → không cần JpaSpecificationExecutor
 public interface ExampleRepository extends JpaRepository<ExampleEntity, Long> {
     Optional<ExampleEntity> findByIdAndUserId(Long id, Long userId);
 }
+
+// Có dynamic filter (search) → thêm JpaSpecificationExecutor
+public interface ExampleRepository extends JpaRepository<ExampleEntity, Long>,
+        JpaSpecificationExecutor<ExampleEntity> {
+    Optional<ExampleEntity> findByIdAndUserId(Long id, Long userId);
+}
 ```
+
+#### 3a. Specification (chỉ tạo khi có dynamic filter)
+
+Tạo file `repository/specification/ExampleSpecification.java`:
+
+```java
+public class ExampleSpecification {
+
+    // Mỗi điều kiện là 1 public static method riêng — null-safe (trả null → bỏ qua predicate đó)
+    public static Specification<ExampleEntity> filterByName(String name) {
+        return (root, query, cb) -> name == null || name.isBlank()
+                ? null
+                : cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase() + "%");
+    }
+
+    public static Specification<ExampleEntity> filterByStatus(ExampleStatus status) {
+        return (root, query, cb) ->
+                status == null ? null : cb.equal(root.get("status"), status);
+    }
+
+    public static Specification<ExampleEntity> filterByCreatedAfter(LocalDateTime from) {
+        return (root, query, cb) ->
+                from == null ? null : cb.greaterThanOrEqualTo(root.get("createdAt"), from);
+    }
+}
+```
+
+**Quy tắc:**
+- Tên class: `[Entity]Specification`
+- Vị trí: `repository/specification/[Entity]Specification.java`
+- Mỗi filter điều kiện → 1 `public static` method riêng bắt đầu bằng `filterBy...`
+- Tất cả method phải **null-safe** (trả `null` thay vì throw exception khi input null)
+- **Service** sẽ chịu trách nhiệm kết hợp các filter bằng `Specification.allOf()`:
+  ```java
+  List<Specification<ExampleEntity>> specs = new ArrayList<>();
+  specs.add(ExampleSpecification.filterByName(request.getName()));
+  specs.add(ExampleSpecification.filterByStatus(request.getStatus()));
+  
+  repository.findAll(Specification.allOf(specs), pageable);
+  ```
 
 #### 4. Mapper
 ```java

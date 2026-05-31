@@ -3,6 +3,7 @@ package com.example.travelez.backend.review.repository;
 import com.example.travelez.backend.review.model.Review;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,4 +24,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, JpaSpecif
 
     @EntityGraph(attributePaths = {"poi", "traveler"})
     Page<Review> findAllByTravelerId(Long userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"medias"})
+    @Query("SELECT r FROM Review r WHERE r.id = :id")
+    Optional<Review> findByIdWithMedias(@Param("id") Long id);
 }

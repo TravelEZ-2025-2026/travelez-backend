@@ -3,6 +3,7 @@ package com.example.travelez.backend.review.model;
 import com.example.travelez.backend.common.model.AuditableEntity;
 import com.example.travelez.backend.media.model.Media;
 import com.example.travelez.backend.poi.model.Poi;
+import com.example.travelez.backend.posts.model.enums.AiScanStatus;
 import com.example.travelez.backend.review.model.enums.ReviewStatus;
 import com.example.travelez.backend.users.model.User;
 import jakarta.persistence.*;
@@ -31,6 +32,11 @@ public class Review extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
     private ReviewStatus status;
+
+    @Column(name = "ai_scan_status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private AiScanStatus aiScanStatus = AiScanStatus.PENDING_SCAN;
 
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;

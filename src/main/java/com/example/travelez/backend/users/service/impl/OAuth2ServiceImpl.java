@@ -65,6 +65,8 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                         .email(email)
                         .fullName((String) payload.get("name"))
 //                        .avatar((String) payload.get("picture"))
+                        .followerCount(0L)
+                        .followingCount(0L)
                         .authProvider(AuthProvider.GOOGLE)
                         .role(RoleType.TRAVELER)
                         .status(UserStatus.ACTIVE)

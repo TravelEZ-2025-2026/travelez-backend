@@ -65,6 +65,7 @@ public class PostsServiceImpl implements PostsService {
     private final PoiService poiService;
     private final PostsAiService postsAiService;
     private final ReactionService reactionService;
+    private final com.example.travelez.backend.moderation.service.ContentModerationService contentModerationService;
 
     private final PostsRepository postsRepository;
     private final CommentRepository commentRepository;
@@ -75,6 +76,12 @@ public class PostsServiceImpl implements PostsService {
 
     @Override
     public void createPost(PostsCreateRequest request) {
+        // Check for banned keywords before processing
+        var moderationResult = contentModerationService.checkKeywords(request.getTitle(), request.getContent());
+        if (!moderationResult.isSafe()) {
+            throw new ApiException(ResultCode.BAD_REQUEST, moderationResult.getReason());
+        }
+        
         String folder_id = UUID.randomUUID().toString();
         List<UploadFileResult> uploadedFiles = uploadFile(folder_id, request.getFiles());
 
@@ -113,6 +120,12 @@ public class PostsServiceImpl implements PostsService {
                     .status(result.getStatus())
                     .createdAt(result.getCreatedAt())
                     .build()));
+            
+            // Submit for AI moderation asynchronously
+            contentModerationService.submitForAIModeration(
+                    result.getId(), 
+                    com.example.travelez.backend.moderation.model.enums.ModerationTargetType.POST
+            );
 
         } catch (Exception e) {
             List<String> fileNames = uploadedFiles.stream().map(UploadFileResult::getCloudName).toList();
