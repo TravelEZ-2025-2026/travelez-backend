@@ -4,7 +4,6 @@ import com.example.travelez.backend.ai.pipeline.facade.AiItineraryFacade;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
-import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryCreationRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItineraryReplanRequest;
 import com.example.travelez.backend.itinerary.dto.request.ItinerarySaveRequest;
@@ -13,6 +12,7 @@ import com.example.travelez.backend.itinerary.dto.response.utils.ActivityDTO;
 import com.example.travelez.backend.itinerary.dto.response.utils.DayPlan;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryDetailResponse;
 import com.example.travelez.backend.itinerary.dto.response.ItineraryResponse;
+import com.example.travelez.backend.itinerary.event.ItinerarySavedEvent;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
 import com.example.travelez.backend.itinerary.model.Itinerary;
 import com.example.travelez.backend.itinerary.model.ItineraryActivity;
@@ -29,6 +29,7 @@ import com.example.travelez.backend.users.model.User;
 import com.example.travelez.backend.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +38,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.concurrent.CompletableFuture;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -56,7 +56,7 @@ public class ItineraryServiceImpl implements ItineraryService {
     private final ItineraryCacheRepository itineraryCacheRepository;
     private final AiItineraryFacade aiPipelineFacade;
     private final ItinerarySharedUserRepository itinerarySharedUserRepository;
-    private final GeminiEmbeddingService geminiEmbeddingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public ItineraryResponse generateSmartItinerary(ItineraryCreationRequest request) {
@@ -138,19 +138,7 @@ public class ItineraryServiceImpl implements ItineraryService {
         final Long itineraryId = savedItinerary.getId();
 
         if (objectives != null && !objectives.isBlank()) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    List<float[]> embeddings = geminiEmbeddingService.embedTexts(List.of(objectives));
-
-                    if (!embeddings.isEmpty() && embeddings.getFirst() != null) {
-                        String vectorStr = Arrays.toString(embeddings.getFirst());
-
-                        itineraryRepository.updateObjectivesVector(itineraryId, vectorStr);
-                    }
-                } catch (Exception e) {
-                    log.error("Failed to vectorize itinerary objectives for ID: {}", itineraryId, e);
-                }
-            });
+            eventPublisher.publishEvent(new ItinerarySavedEvent(itineraryId, objectives));
         }
 
         return itineraryId;
