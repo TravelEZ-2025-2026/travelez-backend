@@ -123,8 +123,11 @@ public class ItineraryManagementController {
     }
 
     @PostMapping("/{id}/export-calendar")
-    public ResponseEntity<BaseResponse<Void>> exportToGoogleCalendar(@PathVariable Long id) {
-        itineraryManagementService.exportToGoogleCalendar(id);
-        return BaseResponse.success(null, ResultCode.SUCCESS, "Itinerary exported to Google Calendar successfully");
+    public ResponseEntity<BaseResponse<String>> exportToGoogleCalendar(@PathVariable Long id) {
+        String authUrl = itineraryManagementService.exportToGoogleCalendar(id);
+        if (authUrl != null) {
+            return BaseResponse.failed(authUrl, ResultCode.FORBIDDEN, "Google Calendar permission required");
+        }
+        return BaseResponse.success(null, ResultCode.SUCCESS, "Calendar sync started");
     }
 }

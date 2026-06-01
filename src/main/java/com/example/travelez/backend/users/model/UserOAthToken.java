@@ -33,4 +33,10 @@ public class UserOAthToken extends AuditableEntity {
 
     @Column(name = "refresh_token", nullable = false, columnDefinition = "TEXT")
     private String refreshToken;
+
+    @Column(name = "scopes", columnDefinition = "TEXT")
+    private String scopes;
+
+    @Column(name = "expires_at")
+    private java.time.LocalDateTime expiresAt;
 }

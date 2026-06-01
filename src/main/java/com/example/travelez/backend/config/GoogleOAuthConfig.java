@@ -15,4 +15,5 @@ public class GoogleOAuthConfig {
     private String clientId;
     private String clientSecret;
     private String redirectUri = "http://localhost:3000/auth/callback";
+    private String calendarRedirectUri = "http://localhost:3000/calendar-callback";
 }
