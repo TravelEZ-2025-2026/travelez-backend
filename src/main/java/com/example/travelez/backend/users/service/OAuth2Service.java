@@ -4,6 +4,8 @@ import com.example.travelez.backend.users.dto.response.UserLoginResponse;
 
 public interface OAuth2Service {
 
-    public UserLoginResponse authenticateGoogle(String code);
+    UserLoginResponse authenticateGoogle(String code);
+
+    void processCalendarCallback(String code, Long userId);
 
 }

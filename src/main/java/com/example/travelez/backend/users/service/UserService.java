@@ -7,6 +7,7 @@ import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.media.dto.response.MediaBaseResponse;
 import com.example.travelez.backend.users.dto.request.UserRegisterRequest;
 import com.example.travelez.backend.users.dto.request.UserUpdateRequest;
+import com.example.travelez.backend.users.dto.response.IntegrationStatusResponse;
 import com.example.travelez.backend.users.dto.response.UserDetailResponse;
 import com.example.travelez.backend.users.dto.response.UserLoginResponse;
 import com.example.travelez.backend.users.model.User;
@@ -30,5 +31,7 @@ public interface UserService {
     MediaBaseResponse updateUserCover(MultipartFile file);
 
     UserDetailResponse updateUserInfo(UserUpdateRequest request);
+
+    IntegrationStatusResponse getIntegrationStatus();
 
 }

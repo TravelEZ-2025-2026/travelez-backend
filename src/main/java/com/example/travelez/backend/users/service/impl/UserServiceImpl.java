@@ -27,8 +27,10 @@ import com.example.travelez.backend.users.model.enums.RoleType;
 import com.example.travelez.backend.users.model.enums.UserStatus;
 import com.example.travelez.backend.users.repository.UserRepository;
 import com.example.travelez.backend.users.repository.specification.UserSpecification;
+import com.example.travelez.backend.users.dto.response.IntegrationStatusResponse;
+import com.example.travelez.backend.users.model.enums.AuthProvider;
+import com.example.travelez.backend.users.repository.TokenRepository;
 import com.example.travelez.backend.users.service.UserService;
-
 
 import lombok.RequiredArgsConstructor;
 
@@ -63,6 +65,7 @@ public class UserServiceImpl implements UserService {
     private final FollowService followService;
 
     private final UserRepository userRepository;
+    private final TokenRepository tokenRepository;
     private final MediaRepository mediaRepository;
 
     private final UserMapper userMapper;
@@ -257,6 +260,21 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
         return userMapper.toUserDetailResponse(user, false, false);
+    }
+
+    @Override
+    public IntegrationStatusResponse getIntegrationStatus() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return tokenRepository.findByUserIdAndProvider(userId, AuthProvider.GOOGLE)
+                .map(token -> IntegrationStatusResponse.builder()
+                        .isGoogleLinked(true)
+                        .hasCalendarScope(token.getScopes() != null
+                                && token.getScopes().contains("https://www.googleapis.com/auth/calendar.events"))
+                        .build())
+                .orElse(IntegrationStatusResponse.builder()
+                        .isGoogleLinked(false)
+                        .hasCalendarScope(false)
+                        .build());
     }
 
     private CommonPage<UserDetailResponse> getUsersPageResponse(Page<User> page, Pageable pageable) {

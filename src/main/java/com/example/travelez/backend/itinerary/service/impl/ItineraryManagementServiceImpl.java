@@ -3,7 +3,9 @@ package com.example.travelez.backend.itinerary.service.impl;
 import com.example.travelez.backend.common.api.CommonPage;
 import com.example.travelez.backend.common.api.ResultCode;
 import com.example.travelez.backend.common.exception.ApiException;
+import com.example.travelez.backend.common.utils.SecurityUtils;
 import com.example.travelez.backend.infrastructure.gemini.GeminiEmbeddingService;
+import com.example.travelez.backend.infrastructure.googlecalendar.GoogleCalendarService;
 import com.example.travelez.backend.itinerary.dto.response.ItinerarySummaryResponse;
 import com.example.travelez.backend.itinerary.dto.response.SharedUserSearchResponse;
 import com.example.travelez.backend.itinerary.mapper.ItineraryMapper;
@@ -37,6 +39,7 @@ public class ItineraryManagementServiceImpl implements ItineraryManagementServic
     private final ItinerarySharedUserRepository sharedUserRepository;
     private final ItineraryMapper itineraryMapper;
     private final GeminiEmbeddingService geminiEmbeddingService;
+    private final GoogleCalendarService googleCalendarService;
 
     @Override
     @Transactional
@@ -137,8 +140,26 @@ public class ItineraryManagementServiceImpl implements ItineraryManagementServic
     }
 
     @Override
-    public void exportToGoogleCalendar(Long itineraryId) {
-        throw new ApiException(ResultCode.FORBIDDEN, "This feature is not available yet");
+    public String exportToGoogleCalendar(Long itineraryId) {
+        Long userId = SecurityUtils.getCurrentUserId();
+
+        Itinerary itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "Itinerary not found"));
+
+        if (!Objects.equals(itinerary.getTraveler().getId(), userId)) {
+            throw new ApiException(ResultCode.FORBIDDEN, "Only owner can sync itinerary to Google Calendar");
+        }
+
+        if (itinerary.getCalendarSyncedAt() != null) {
+            throw new ApiException(ResultCode.VALIDATION_FAILED, "Itinerary already synced to Google Calendar");
+        }
+
+        if (!googleCalendarService.hasCalendarScope(userId)) {
+            return googleCalendarService.buildCalendarAuthorizationUrl(itineraryId);
+        }
+
+        googleCalendarService.syncItineraryToCalendar(itineraryId, userId);
+        return null;
     }
 
     @Override

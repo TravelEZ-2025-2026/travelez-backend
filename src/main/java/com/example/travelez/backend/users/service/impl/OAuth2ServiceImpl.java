@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.LocalDateTime;
 import java.util.Collections;
 
 @Service
@@ -40,6 +41,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
 
     private final JwtUtil jwtUtil;
 
+    @Override
     @Transactional
     public UserLoginResponse authenticateGoogle(String code) {
         try {
@@ -55,6 +57,9 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                     .setAudience(Collections.singletonList(googleOAuthConfig.getClientId()))
                     .build();
             GoogleIdToken idToken = verifier.verify(tokenResponse.getIdToken());
+            if (idToken == null) {
+                throw new ApiException(ResultCode.VALIDATION_FAILED, "Invalid Google ID token");
+            }
             GoogleIdToken.Payload payload = idToken.getPayload();
             String email = payload.getEmail();
 
@@ -64,7 +69,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                         .username(email)
                         .email(email)
                         .fullName((String) payload.get("name"))
-//                        .avatar((String) payload.get("picture"))
+                        // .avatar((String) payload.get("picture"))
                         .followerCount(0L)
                         .followingCount(0L)
                         .authProvider(AuthProvider.GOOGLE)
@@ -92,6 +97,73 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                     .userId(user.getId())
                     .role(user.getRole())
                     .build();
+        } catch (IOException | GeneralSecurityException e) {
+            throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void processCalendarCallback(String code, Long userId) {
+        try {
+            GoogleTokenResponse tokenResponse = new GoogleAuthorizationCodeTokenRequest(
+                    new NetHttpTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    "https://oauth2.googleapis.com/token",
+                    googleOAuthConfig.getClientId(),
+                    googleOAuthConfig.getClientSecret(),
+                    code,
+                    googleOAuthConfig.getCalendarRedirectUri()).execute();
+
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                    .setAudience(Collections.singletonList(googleOAuthConfig.getClientId()))
+                    .build();
+            GoogleIdToken idToken = verifier.verify(tokenResponse.getIdToken());
+            if (idToken == null) {
+                throw new ApiException(ResultCode.VALIDATION_FAILED, "Invalid Google ID token");
+            }
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            String googleId = payload.getSubject();
+
+            // Validate: googleId không được thuộc về user khác
+            userRepository.findByGoogleId(googleId).ifPresent(existingUser -> {
+                if (existingUser.getId() != userId) {
+                    throw new ApiException(ResultCode.VALIDATION_FAILED,
+                            "This Google account is already linked to another user");
+                }
+            });
+
+            // Gán googleId cho user hiện tại nếu chưa có
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ApiException(ResultCode.NOT_FOUND, "User not found"));
+            if (user.getGoogleId() == null) {
+                user.setGoogleId(googleId);
+                userRepository.save(user);
+            }
+
+            // Upsert token với scopes
+            String grantedScopes = "openid email profile https://www.googleapis.com/auth/calendar.events";
+            UserOAthToken tokenEntity = tokenRepository.findByUserIdAndProvider(userId, AuthProvider.GOOGLE)
+                    .orElse(new UserOAthToken());
+            boolean isNew = tokenEntity.getId() == null;
+            tokenEntity.setUser(user);
+            tokenEntity.setProvider(AuthProvider.GOOGLE);
+            tokenEntity.setAccessToken(tokenResponse.getAccessToken());
+            tokenEntity.setScopes(grantedScopes);
+            if (tokenResponse.getRefreshToken() != null) {
+                tokenEntity.setRefreshToken(tokenResponse.getRefreshToken());
+            } else if (isNew) {
+                throw new ApiException(ResultCode.VALIDATION_FAILED,
+                        "Google did not return a refresh token. Please revoke access and try again.");
+            }
+            if (tokenResponse.getExpiresInSeconds() != null) {
+                tokenEntity.setExpiresAt(LocalDateTime.now().plusSeconds(tokenResponse.getExpiresInSeconds()));
+            }
+            tokenRepository.save(tokenEntity);
+
+        } catch (ApiException e) {
+            throw e;
         } catch (IOException | GeneralSecurityException e) {
             throw new ApiException(ResultCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }

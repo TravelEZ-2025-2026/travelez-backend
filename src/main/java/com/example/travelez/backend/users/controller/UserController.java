@@ -9,8 +9,9 @@ import com.example.travelez.backend.common.utils.PaginationUtils;
 import com.example.travelez.backend.common.utils.SecurityUtils;
 import com.example.travelez.backend.media.dto.response.MediaBaseResponse;
 import com.example.travelez.backend.security.component.UserPrinciple;
+import com.example.travelez.backend.users.dto.response.IntegrationStatusResponse;
 import com.example.travelez.backend.users.dto.response.UserDetailResponse;
-import com.example.travelez.backend.users.mapper.UserMapper;
+import com.example.travelez.backend.users.service.OAuth2Service;
 import com.example.travelez.backend.users.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +19,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.example.travelez.backend.users.dto.request.UserUpdateRequest;
 import jakarta.validation.Valid;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -32,6 +33,7 @@ import jakarta.validation.Valid;
 public class UserController {
 
     private final UserService userService;
+    private final OAuth2Service oAuth2Service;
 
     @GetMapping("/search")
     public ResponseEntity<BaseResponse<CommonPage<UserDetailResponse>>> searchUsers(
@@ -44,6 +46,17 @@ public class UserController {
         final PaginationRequest paginationRequest = new PaginationRequest(page, size, sortField, sortDirection);
         CommonPage<UserDetailResponse> response = userService.searchUsers(keyword, PaginationUtils.getPageable(paginationRequest));
         return BaseResponse.success(response, ResultCode.SUCCESS, "Users fetched successfully");
+    }
+
+    @GetMapping("/me/integrations")
+    public ResponseEntity<BaseResponse<IntegrationStatusResponse>> getIntegrationStatus() {
+        return BaseResponse.success(userService.getIntegrationStatus(), ResultCode.SUCCESS, "Integration status fetched successfully");
+    }
+
+    @PostMapping("/me/google/calendar-callback")
+    public ResponseEntity<BaseResponse<Void>> calendarCallback(@RequestBody Map<String, String> request) {
+        oAuth2Service.processCalendarCallback(request.get("code"), SecurityUtils.getCurrentUserId());
+        return BaseResponse.success(null, ResultCode.SUCCESS, "Google Calendar linked successfully");
     }
 
     @GetMapping("/me")

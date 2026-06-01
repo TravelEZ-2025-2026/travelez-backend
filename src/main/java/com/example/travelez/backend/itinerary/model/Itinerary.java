@@ -10,6 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -85,6 +86,9 @@ public class Itinerary extends AuditableEntity {
 
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private Boolean isPublic = false;
+
+    @Column(name = "calendar_synced_at")
+    private LocalDateTime calendarSyncedAt;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

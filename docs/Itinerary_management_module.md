@@ -232,6 +232,202 @@ Bắt buộc truyền Token. Backend sẽ kiểm tra chéo xem `userId` của to
 > - **Gặp lỗi 403 (khi xem chi tiết Lộ trình):** Hiển thị màn hình rỗng kèm câu thông báo: *"Rất tiếc, lộ trình này đã được tác giả chuyển về chế độ riêng tư."*
 > - **Gặp lỗi 403 (khi thao tác Share/Public):** Hiển thị Toast thông báo lỗi màu đỏ: *"Bạn không có quyền thực hiện thao tác này."*
 
-```
+---
+
+## 📅 PHẦN 4: ĐỒNG BỘ GOOGLE CALENDAR
+
+Cho phép Traveler đồng bộ `ItineraryActivity` lên Google Calendar cá nhân. Sử dụng OAuth 2.0 Progressive Consent — chỉ yêu cầu quyền Calendar khi user thực sự cần, không bắt buộc ngay lúc đăng nhập.
+
+### Luồng tổng quan (5 bước)
 
 ```
+FE: GET /me/integrations
+    ↓ isGoogleLinked? hasCalendarScope?
+FE: hiển thị nút "Liên kết" hay "Đồng bộ"
+    ↓ User nhấn "Đồng bộ"
+POST /management/itineraries/{id}/export-calendar
+    ↓ nếu chưa có scope → 403 + authorizationUrl
+FE: redirect user đến authorizationUrl (Google OAuth)
+    ↓ User cấp quyền → Google redirect về FE với ?code=...
+POST /users/me/google/calendar-callback  { code }
+    ↓ 200 OK → token lưu vào DB
+FE: gọi lại POST export-calendar → 200 "Calendar sync started"
+    ↓ @Async: BE tạo events trên Google Calendar
+WebSocket: nhận CALENDAR_SYNC_COMPLETED notification
+```
+
+---
+
+### 4.1 Kiểm tra trạng thái tích hợp
+
+Dùng để FE quyết định hiển thị nút "Liên kết Google" hay "Đồng bộ lịch".
+
+- **Endpoint:** `GET /api/users/me/integrations`
+- **Auth:** Required (JWT)
+
+**Response (200 OK):**
+```json
+{
+  "code": 200,
+  "message": "Integration status fetched successfully",
+  "data": {
+    "isGoogleLinked": false,
+    "hasCalendarScope": false
+  },
+  "success": true
+}
+```
+
+| Trường | Ý nghĩa |
+|---|---|
+| `isGoogleLinked` | User đã có `user_oauth_tokens` row với provider = GOOGLE |
+| `hasCalendarScope` | Token đó có chứa scope `calendar.events` |
+
+> 💡 **FE Tip:** Gọi API này khi vào màn hình chi tiết lộ trình để quyết định trạng thái nút Calendar. Nếu `isGoogleLinked = false` → nút "Liên kết Google Calendar". Nếu `hasCalendarScope = true` → nút "Đồng bộ lên Google Calendar".
+
+---
+
+### 4.2 Export lộ trình lên Google Calendar
+
+Endpoint duy nhất để trigger sync. Có hai kết quả tùy trạng thái quyền:
+
+- **Endpoint:** `POST /api/management/itineraries/{id}/export-calendar`
+- **Auth:** Required (JWT, owner only)
+- **Path Variable:** `id` — ID lộ trình
+
+**Response A — Đã có Calendar scope (200 OK):**
+```json
+{
+  "code": 200,
+  "message": "Calendar sync started",
+  "data": null,
+  "success": true
+}
+```
+> Sync chạy `@Async` — response trả về ngay, events sẽ xuất hiện trong vài giây. WebSocket gửi notification khi xong.
+
+**Response B — Chưa cấp quyền Calendar (403):**
+```json
+{
+  "code": 403,
+  "message": "Google Calendar permission required",
+  "data": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&scope=...calendar.events...",
+  "success": false
+}
+```
+> FE nhận `data` là URL Google OAuth → redirect user đến URL này để cấp quyền. URL có `state={itineraryId}` để FE biết itinerary nào cần sync sau callback.
+
+**Bắt lỗi:**
+- `403 FORBIDDEN` (ownership): User không phải owner của lộ trình
+- `400 BAD_REQUEST`: Lộ trình đã được sync trước đó (`calendarSyncedAt != null`)
+
+---
+
+### 4.3 Nhận Calendar Authorization Code (Callback)
+
+Sau khi user cấp quyền trên Google, Google redirect về FE với `?code=...`. FE gửi code này lên BE để exchange lấy token.
+
+- **Endpoint:** `POST /api/users/me/google/calendar-callback`
+- **Auth:** Required (JWT — phải là user đang login)
+- **Content-Type:** `application/json`
+
+**Request:**
+```json
+{
+  "code": "4/0AX4XfWi..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "code": 200,
+  "message": "Google Calendar linked successfully",
+  "data": null,
+  "success": true
+}
+```
+
+**Sau khi callback thành công:**
+- `user_oauth_tokens` được upsert với `access_token`, `refresh_token`, `scopes`, `expires_at`
+- Nếu user là LOCAL account và Google account chưa liên kết: `google_id` được ghi vào bảng `users`
+- Nếu `google_id` đó đã thuộc user khác: throw 400
+
+**Bắt lỗi:**
+- `400 BAD_REQUEST`: code hết hạn, đã dùng, hoặc `google_id` xung đột với account khác
+
+---
+
+### 4.4 Hành vi Sync chi tiết
+
+**Event mapping từ `ItineraryActivity`:**
+
+| Google Calendar Field | Lấy từ |
+|---|---|
+| `summary` | `activity.description` (fallback: `itinerary.title + " - Activity"`) |
+| `location` | `activity.poi.name` (nếu có liên kết POI) |
+| `description` | `activity.note` |
+| `start` / `end` | `activity.itineraryDate` + `startTime`/`endTime` (timezone: `Asia/Ho_Chi_Minh`) |
+
+**Giá trị mặc định nếu activity thiếu time:**
+- `startTime` không có → mặc định **08:00**
+- `endTime` không có → `startTime + 1 giờ`
+
+**Sync behavior:**
+- Mỗi lộ trình chỉ được sync **1 lần duy nhất**
+- Sau khi sync thành công → `itinerary.calendar_synced_at` được set, mọi lần gọi tiếp theo trả `400`
+- Response của các API lộ trình có thêm field `calendarSyncedAt` (null = chưa sync, non-null = timestamp sync thành công)
+
+**Auto-refresh token:**
+- `GoogleCredential` tự động refresh `access_token` khi hết hạn dùng `refresh_token`
+- Token mới được cập nhật vào `user_oauth_tokens` ngay sau khi refresh thành công
+
+---
+
+### 4.5 WebSocket Notification sau Sync
+
+Sau khi sync hoàn tất (bất kể thành công hay thất bại), BE gửi notification qua WebSocket:
+
+**Subscribe tại:** `/user/queue/notifications`
+
+**Notification thành công:**
+```json
+{
+  "title": "Đồng bộ lịch thành công",
+  "message": "Lịch trình \"Khám phá Tây Bắc\" đã được đồng bộ lên Google Calendar.",
+  "type": "CALENDAR_SYNC_COMPLETED",
+  "targetType": "ITINERARY",
+  "targetId": 42
+}
+```
+
+**Notification thất bại:**
+```json
+{
+  "title": "Đồng bộ lịch thất bại",
+  "message": "Không thể đồng bộ lịch trình \"Khám phá Tây Bắc\" lên Google Calendar.",
+  "type": "CALENDAR_SYNC_FAILED",
+  "targetType": "ITINERARY",
+  "targetId": 42
+}
+```
+
+---
+
+### 4.6 Phân quyền
+
+| Endpoint | Auth | Role |
+|---|---|---|
+| `GET /api/users/me/integrations` | Required | TRAVELER |
+| `POST /api/management/itineraries/{id}/export-calendar` | Required, owner only | TRAVELER |
+| `POST /api/users/me/google/calendar-callback` | Required | TRAVELER |
+
+---
+
+### 4.7 Env Vars & Setup
+
+```env
+GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:3000/calendar-callback
+```
+
+> URI này **phải được đăng ký** trong Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs. Nếu không, Google sẽ từ chối callback với lỗi `redirect_uri_mismatch`.

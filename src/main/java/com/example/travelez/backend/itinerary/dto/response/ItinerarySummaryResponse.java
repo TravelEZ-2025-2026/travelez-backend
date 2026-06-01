@@ -23,4 +23,5 @@ public class ItinerarySummaryResponse {
     private LocalDateTime createdAt;
     private String ownerUsername;
     private Boolean isPublic;
+    private LocalDateTime calendarSyncedAt;
 }
