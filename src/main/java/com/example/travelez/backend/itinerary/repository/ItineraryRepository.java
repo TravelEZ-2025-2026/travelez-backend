@@ -1,6 +1,7 @@
 package com.example.travelez.backend.itinerary.repository;
 
 import com.example.travelez.backend.itinerary.model.Itinerary;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,7 @@ public interface ItineraryRepository extends JpaRepository<Itinerary, Long>, Jpa
     @Query("SELECT i FROM Itinerary i JOIN i.sharedUsers su WHERE su.userId = :userId")
     Page<Itinerary> findItinerariesSharedWithUser(@Param("userId") Long userId, Pageable pageable);
 
+    @Transactional
     @Modifying
     @Query(value = "UPDATE itinerary SET objectives_vector = cast(:vectorStr as vector) WHERE id = :id", nativeQuery = true)
     void updateObjectivesVector(@Param("id") Long id, @Param("vectorStr") String vectorStr);

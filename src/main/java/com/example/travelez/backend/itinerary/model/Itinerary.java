@@ -85,6 +85,7 @@ public class Itinerary extends AuditableEntity {
     private String objectivesVector;
 
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
     private Boolean isPublic = false;
 
     @Column(name = "calendar_synced_at")
@@ -103,6 +104,7 @@ public class Itinerary extends AuditableEntity {
     private List<ItineraryActivity> activities;
 
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ItinerarySharedUser> sharedUsers = new ArrayList<>();
 
 }
