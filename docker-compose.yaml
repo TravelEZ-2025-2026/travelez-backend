@@ -1,21 +1,21 @@
 version: "3.8"
 
 services:
-  # db:
-  #   image: pgvector/pgvector:pg15
-  #   container_name: travelez_db
-  #   environment:
-  #     POSTGRES_USER: ${DB_USERNAME}
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #     POSTGRES_DB: travelez
-  #   ports:
-  #     - "5439:5432"
-  #   volumes:
-  #     - travelez_postgres_data:/var/lib/postgresql
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         memory: 200M
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: travelez_db
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: travelez
+    ports:
+      - "5439:5432"
+    volumes:
+      - travelez_postgres_data:/var/lib/postgresql
+    deploy:
+      resources:
+        limits:
+          memory: 200M
   # RabbitMQ Service
   rabbitmq:
     image: rabbitmq:3-management
@@ -48,8 +48,6 @@ services:
       --maxmemory 512mb
       --maxmemory-policy allkeys-lru
     restart: always
-    networks:
-      - redis-net
 
   # Travelez Backend Service
   backend:
@@ -58,23 +56,20 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      # - db
+      - db
+      - redis-cache
       - rabbitmq
     env_file:
       - .env
     environment:
       # DB_URL: jdbc:postgresql://db:5432/travelez?stringtype=unspecified
       DB_URL: ${DB_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
       RABBITMQ_HOST: rabbitmq
       GCS_CREDENTIALS_PATH: /app/gcs-key.json
       JAVA_OPTS: "-Xmx400m -Xms256m"
-    networks:
-      - redis-net
 
 volumes:
   # travelez_postgres_data:
   travelez_rabbitmq_data:
-
-networks:
-  redis-net:
-    driver: bridge

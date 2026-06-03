@@ -9,6 +9,7 @@ import com.example.travelez.backend.users.model.Admin;
 import com.example.travelez.backend.users.model.Provider;
 import com.example.travelez.backend.users.model.Traveler;
 import com.example.travelez.backend.users.model.User;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -25,16 +26,19 @@ public interface UserMapper {
     @Mapping(target = "status", constant = "ACTIVE")
     @Mapping(target = "followerCount", constant = "0L")
     @Mapping(target = "followingCount", constant = "0L")
+    @Mapping(target = "authProvider", constant = "LOCAL")
     Traveler toTraveler(UserRegisterRequest request);
 
     @Mapping(target = "status", constant = "ACTIVE")
     @Mapping(target = "followerCount", constant = "0L")
     @Mapping(target = "followingCount", constant = "0L")
+    @Mapping(target = "authProvider", constant = "LOCAL")
     Provider toProvider(UserRegisterRequest request);
 
     @Mapping(target = "status", constant = "ACTIVE")
     @Mapping(target = "followerCount", constant = "0L")
     @Mapping(target = "followingCount", constant = "0L")
+    @Mapping(target = "authProvider", constant = "LOCAL")
     Admin toAdmin(UserRegisterRequest request);
 
     @Mapping(target = "userId", source = "id")

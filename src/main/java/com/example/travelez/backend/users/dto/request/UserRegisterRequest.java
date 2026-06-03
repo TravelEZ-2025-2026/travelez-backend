@@ -1,5 +1,7 @@
 package com.example.travelez.backend.users.dto.request;
 
+import java.time.LocalDate;
+
 import com.example.travelez.backend.users.model.enums.GenderType;
 import com.example.travelez.backend.users.model.enums.RoleType;
 import jakarta.persistence.EnumType;
@@ -7,8 +9,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import java.time.LocalDateTime;
 
 @Data
 public class UserRegisterRequest {
@@ -28,9 +28,9 @@ public class UserRegisterRequest {
     @Enumerated(EnumType.STRING)
     private GenderType gender;
 
-    private LocalDateTime dob;
+    private LocalDate dob;
 
-    //    @NotBlank(message = "Recaptcha token is required")
+    // @NotBlank(message = "Recaptcha token is required")
     private String recaptchaToken;
 
     private String secretCode;
