@@ -9,7 +9,8 @@ import com.example.travelez.backend.users.model.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import java.time.LocalDateTime;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "users")
@@ -42,7 +43,7 @@ public class User extends AuditableEntity {
     private GenderType gender;
 
     @Column(name = "dob")
-    private LocalDateTime dob;
+    private LocalDate dob;
 
     @Column(name = "status", nullable = false)
     @Builder.Default
