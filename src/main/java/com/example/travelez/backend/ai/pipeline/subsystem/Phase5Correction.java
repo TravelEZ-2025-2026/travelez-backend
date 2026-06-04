@@ -79,7 +79,7 @@ public class Phase5Correction {
         // 4. Gọi LLM2
         try {
             log.info("Sending repair instructions to Gemini...");
-            String fixedJson = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH);
+            String fixedJson = geminiService.generateJson(prompt, GeminiService.ModelType.FLASH_LITE);
             fixedJson = cleanJsonResponse(fixedJson);
 
             log.info("Phase 5 Correction JSON generated successfully.");
