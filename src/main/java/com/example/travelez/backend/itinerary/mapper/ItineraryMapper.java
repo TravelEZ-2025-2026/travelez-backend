@@ -15,7 +15,7 @@ import com.example.travelez.backend.poi.model.Poi;
 import com.example.travelez.backend.users.model.User;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring", imports = {ItineraryStatus.class, ItineraryUtils.class})
+@Mapper(componentModel = "spring", imports = { ItineraryStatus.class, ItineraryUtils.class })
 public interface ItineraryMapper {
 
     @Mapping(target = "id", ignore = true)
@@ -51,7 +51,8 @@ public interface ItineraryMapper {
     @Mapping(target = "endTime", source = "dto.endTime")
     @Mapping(target = "activityCost", source = "dto.price")
     @Mapping(target = "timeOfDay", expression = "java(ItineraryUtils.calculateTimeOfDay(ItineraryUtils.parseTime(dto.getStartTime())))")
-    ItineraryActivity createActivityEntity(ActivityDTO dto, Itinerary itinerary, java.time.LocalDate date, Poi linkedPoi);
+    ItineraryActivity createActivityEntity(ActivityDTO dto, Itinerary itinerary, java.time.LocalDate date,
+            Poi linkedPoi);
 
     @Mapping(target = "id", source = "id")
     @Mapping(target = "userId", source = "traveler.id")
@@ -66,6 +67,7 @@ public interface ItineraryMapper {
     @Mapping(target = "estimatedBudget.accommodation", source = "estimatedAccommodationPrice")
     @Mapping(target = "estimatedBudget.currency", source = "estimatedCurrency")
     @Mapping(target = "days", ignore = true)
+    @Mapping(target = "calendarSyncedAt", source = "calendarSyncedAt")
     ItineraryDetailResponse toDetailResponseHeader(Itinerary itinerary);
 
     @Mapping(target = "ownerUsername", source = "traveler.username")

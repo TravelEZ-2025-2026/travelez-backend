@@ -36,7 +36,7 @@ public class MessageCleanupTask {
 
     private final MediaRepository mediaRepository;
 
-    @Scheduled(cron = "* * 2 * * ?")
+    @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupRecalledMessagesMedia() {
         log.info("CRON JOB: Bắt đầu dọn dẹp file của tin nhắn đã thu hồi...");
         LocalDateTime thresholdDate = LocalDateTime.now().minusDays(daysToKeep);
